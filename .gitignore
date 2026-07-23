@@ -1,2 +1,32 @@
-*__pycache__
-.vscode
+# Python bytecode and test/tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environments and editor settings
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+
+# Local training outputs and experiment tracking
+checkpoints/
+outputs/
+logs/
+runs/
+wandb/
+lightning_logs/
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/

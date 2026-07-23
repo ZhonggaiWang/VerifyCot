@@ -108,7 +108,9 @@ class TrainingArguments(transformers.Seq2SeqTrainingArguments):
     optim: str = field(default="adamw_torch")
     freeze_backbone: bool = field(default=False)
     freeze_vision_generator: bool = field(default=True)
-    output_dir: str = field(default=WEIGHTFOLDER)
+    # Keep the script importable when no machine-specific checkpoint root is set.
+    # Experiment YAMLs normally override this value.
+    output_dir: str = field(default="./checkpoints")
     num_train_epochs:int = field(default=2)
     per_device_train_batch_size:int = field(default=2)
     per_device_eval_batch_size:int = field(default=2)
