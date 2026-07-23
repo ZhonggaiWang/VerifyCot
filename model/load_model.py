@@ -1,6 +1,6 @@
 from genericpath import samestat
 from torch.utils.data import ConcatDataset, DataLoader
-from typing import Optional, Dict
+from typing import Dict, Optional
 from dataclasses import dataclass, field
 from locals.datasets import SFT_DataCollator, WrappedDataset
 from lightning.pytorch import seed_everything
@@ -15,7 +15,7 @@ from omegaconf import OmegaConf
 from utils.util import instantiate_from_config
 from model.language_model.volcano_llama import VolCanoLlamaForCausalLM,VolCanoConfig
 from model.language_model.volcano_mistral import VolCanoMistralForCausalLM, VolCanoMistralConfig
-from transformers import LlamaTokenizer, AutoTokenizer
+from transformers import AutoTokenizer, LlamaTokenizer, LogitsProcessor, LogitsProcessorList
 import transformers
 from peft import PeftConfig, PeftModel
 from argparse import ArgumentParser
@@ -23,6 +23,7 @@ import os
 import torch.distributed as dist
 from utils.logger import setup_logger
 import json
+import random
 import tqdm
 
 def rank0_print(args, res):
@@ -55,6 +56,91 @@ class CLIPTransform:
         except:
             tmp = torch.tensor(self.transform(Image.new(image.mode, (32, 32), (0,0,0)))['pixel_values'][0])
         return tmp
+
+
+class RandomCoordinateLogitsProcessor(LogitsProcessor):
+    """Replace each generated coordinate span with a dynamically sampled box.
+
+    The processor waits for the model to emit ``<coor>`` itself.  It then forces
+    the coordinate text and closing ``</coor>`` token.  Consequently the normal
+    ``generate_box`` path parses exactly the text seen in the output and binds
+    the matching visual region without any special handling in the model.
+    """
+
+    def __init__(self, tokenizer, prompt_length: int, seed: Optional[int] = None,
+                 min_box_size: float = 0.05, precision: int = 3,
+                 max_randomized_coors: Optional[int] = None):
+        if not 0 < min_box_size <= 1:
+            raise ValueError("min_box_size must be in (0, 1]")
+        if max_randomized_coors is not None and max_randomized_coors < 0:
+            raise ValueError("max_randomized_coors must be non-negative or None")
+        self.tokenizer = tokenizer
+        self.prompt_length = prompt_length
+        self.min_box_size = min_box_size
+        self.precision = precision
+        self.boc_token_id = tokenizer.convert_tokens_to_ids(DEFAULT_BOC_TOKEN)
+        self.eoc_token_id = tokenizer.convert_tokens_to_ids(DEFAULT_EOC_TOKEN)
+        self.rng = random.Random(seed)
+        self.max_randomized_coors = max_randomized_coors
+        self.sampled_boxes = []
+        self._target_suffixes = []
+
+    def _sample_box(self):
+        x_min = self.rng.uniform(0.0, 1.0 - self.min_box_size)
+        y_min = self.rng.uniform(0.0, 1.0 - self.min_box_size)
+        x_max = self.rng.uniform(x_min + self.min_box_size, 1.0)
+        y_max = self.rng.uniform(y_min + self.min_box_size, 1.0)
+        return tuple(round(value, self.precision) for value in (x_min, y_min, x_max, y_max))
+
+    def _new_target_suffix(self):
+        box = self._sample_box()
+        box_text = ",".join(f"{value:.{self.precision}f}" for value in box)
+        # Decoding the special <coor> token already inserts its trailing space.
+        # Adding another leading space here would break extract_box_str's format.
+        suffix_text = f"{box_text}{DEFAULT_EOC_TOKEN}"
+        suffix_ids = self.tokenizer(suffix_text, add_special_tokens=False).input_ids
+        if not suffix_ids or suffix_ids[-1] != self.eoc_token_id:
+            raise ValueError(f"Could not tokenize a coordinate suffix: {suffix_text}")
+        self.sampled_boxes.append(box)
+        self._target_suffixes.append(suffix_ids)
+        return suffix_ids
+
+    @staticmethod
+    def _force_token(scores, token_id: int):
+        scores.fill_(float("-inf"))
+        scores[:, token_id] = 0
+        return scores
+
+    def __call__(self, input_ids, scores):
+        # The existing VoCoT generation/binding path is batch-size one.
+        if input_ids.shape[0] != 1:
+            raise ValueError("RandomCoordinateLogitsProcessor supports batch size 1 only")
+
+        generated_ids = input_ids[0, self.prompt_length:].tolist()
+        boc_positions = [idx for idx, token_id in enumerate(generated_ids) if token_id == self.boc_token_id]
+        eoc_positions = [idx for idx, token_id in enumerate(generated_ids) if token_id == self.eoc_token_id]
+        if not boc_positions or (eoc_positions and eoc_positions[-1] > boc_positions[-1]):
+            return scores
+
+        # A coordinate is active: its index equals the number of completed
+        # coordinate spans.  Sample only once, immediately after <coor> appears.
+        coordinate_index = len(eoc_positions)
+        if (self.max_randomized_coors is not None
+                and coordinate_index >= self.max_randomized_coors):
+            return scores
+        if coordinate_index == len(self._target_suffixes):
+            target_suffix = self._new_target_suffix()
+        else:
+            target_suffix = self._target_suffixes[coordinate_index]
+
+        current_boc = boc_positions[-1]
+        observed_suffix = generated_ids[current_boc + 1:]
+        expected_prefix = target_suffix[:len(observed_suffix)]
+        if observed_suffix != expected_prefix:
+            raise RuntimeError("Generated coordinate tokens diverged from the forced coordinate suffix")
+        if len(observed_suffix) >= len(target_suffix):
+            return scores
+        return self._force_token(scores, target_suffix[len(observed_suffix)])
 
 
 
@@ -124,7 +210,9 @@ def load_model(model_path, device='cuda:0', precision='bf16'):
 
     return model, preprocessor
 
-def infer(model, preprocessor, image, query, cot=True, max_new_tokens=1024, temperature=0.0):
+def infer(model, preprocessor, image, query, cot=True, max_new_tokens=1024, temperature=0.0,
+          randomize_coor=False, random_coor_seed=None, random_coor_min_size=0.05,
+          max_randomized_coors=None, return_metadata=False):
     if cot:
         query = ALL_IMG_TOKENS_STR + DEFAULT_GRD_TOKEN + '\n' + query + COT_ACTIVATION
     else:
@@ -134,9 +222,22 @@ def infer(model, preprocessor, image, query, cot=True, max_new_tokens=1024, temp
     input_item = preprocessor(item)
     data_collator = SFT_DataCollator(tokenizer=preprocessor.tokenizer, sd_tokenizer=None)
     batch = data_collator([input_item])
+    coor_processor = None
+    if randomize_coor:
+        coor_processor = RandomCoordinateLogitsProcessor(
+            preprocessor.tokenizer,
+            prompt_length=batch['input_ids'].shape[-1],
+            seed=random_coor_seed,
+            min_box_size=random_coor_min_size,
+            max_randomized_coors=max_randomized_coors,
+        )
     txt_res, out_imgs, txt_ids = model.condition_completion(batch, avoid_image_gen=True, 
-                                                            max_new_tokens=max_new_tokens, temperature=temperature)
+                                                            max_new_tokens=max_new_tokens, temperature=temperature,
+                                                            logits_processor=(LogitsProcessorList([coor_processor])
+                                                                              if coor_processor is not None else None))
 
+    if return_metadata:
+        return txt_res, {'forced_boxes': [] if coor_processor is None else coor_processor.sampled_boxes}
     return txt_res
             
 

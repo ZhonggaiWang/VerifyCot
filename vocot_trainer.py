@@ -108,6 +108,10 @@ class VoCoTTrainer(Trainer):
     def _prepare_inputs(self, inputs: Dict[str, Union[torch.Tensor, Any]]) -> Dict[str, Union[torch.Tensor, Any]]:
         if 'gt_label' in inputs:
             gt_label = inputs.pop('gt_label')
+        # `raw_images` is retained by the preprocessor for inference-time image
+        # caching/visualization, but it is not a `forward` argument of either
+        # VolCano language model.  Do not pass PIL images into the training call.
+        inputs.pop('raw_images', None)
         return super()._prepare_inputs(inputs)
     
     def compute_loss(self, model, inputs, return_outputs=False):
@@ -130,4 +134,3 @@ class VoCoTTrainer(Trainer):
             regression_loss = self.regression_text_loss_metrics[1]
         self.regression_text_loss_metrics = (text_loss, regression_loss)
         return loss
-    

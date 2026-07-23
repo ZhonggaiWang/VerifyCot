@@ -206,7 +206,9 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
             # rank_0_print(labels)
             
         # regression loss
-        if visual_labels is not None and text_loss is not None:
+        # Stage-1 alignment can run with `avoid_generator=True`, in which case
+        # no behind projector is constructed and only the language loss applies.
+        if visual_labels is not None and text_loss is not None and hasattr(self, 'behind_projector'):
             if visual_label_masks.sum() == 0:
                 # # no target images
                 # if text_loss is not None:
@@ -499,7 +501,8 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
         last_hidden_state = torch.cat(last_hidden_state,dim=1)
         return last_hidden_state
 
-    def condition_completion(self, input_dict, temperature=0.2, max_new_tokens=128, guidance_scale=7.5, avoid_image_gen=False, **kwargs):
+    def condition_completion(self, input_dict, temperature=0.2, max_new_tokens=128, guidance_scale=7.5,
+                             avoid_image_gen=False, logits_processor=None, **kwargs):
         
         self.to_generate_images = []
         self.cache_images = None
@@ -526,6 +529,7 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
                         temperature=temperature,
                         max_new_tokens = max_new_tokens,
                         pad_token_id = self.tokenizer.pad_token_id,
+                        logits_processor=logits_processor,
                         return_dict_in_generate = True
                     )
 

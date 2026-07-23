@@ -23,7 +23,7 @@ output_dir: /PATH/TO/STAGE1_CKPT
 behind_projector: linear
 flash_attn: True
 # dataset config
-data_config_path: config/datasets/stage1_aligment.yaml
+data_config_path: config/datasets/stage1_alignment.yaml
 expand_to_square: True
 remove_unused_columns: False
 regression_weight: 1.0
