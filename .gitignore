@@ -30,3 +30,7 @@ lightning_logs/
 build/
 dist/
 *.egg-info/
+
+
+
+weights/

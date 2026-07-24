@@ -13,6 +13,14 @@ from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampl
 from locals.datasets.preprocessor import VoCoT_InputProcessor
 from omegaconf import OmegaConf
 from utils.util import instantiate_from_config
+from utils.coordinate_intervention import (
+    PrefixReplayCoordinateLogitsProcessor,
+    box_iou,
+    find_coordinate_spans,
+    make_random_box_perturbation,
+    make_same_shape_perturbation,
+)
+from utils.eval_util import extract_all_box_str
 from model.language_model.volcano_llama import VolCanoLlamaForCausalLM,VolCanoConfig
 from model.language_model.volcano_mistral import VolCanoMistralForCausalLM, VolCanoMistralConfig
 from transformers import AutoTokenizer, LlamaTokenizer, LogitsProcessor, LogitsProcessorList
@@ -20,6 +28,7 @@ import transformers
 from peft import PeftConfig, PeftModel
 from argparse import ArgumentParser
 import os
+import torch
 import torch.distributed as dist
 from utils.logger import setup_logger
 import json
@@ -239,6 +248,225 @@ def infer(model, preprocessor, image, query, cot=True, max_new_tokens=1024, temp
     if return_metadata:
         return txt_res, {'forced_boxes': [] if coor_processor is None else coor_processor.sampled_boxes}
     return txt_res
+
+
+def _build_inference_batch(preprocessor, image, query=None, cot=True, conversation=None, options=None):
+    """Build a fresh batch; generation consumes ``raw_images`` in-place."""
+    if conversation is None:
+        if query is None:
+            raise ValueError('query is required when conversation is not supplied')
+        if cot:
+            query = ALL_IMG_TOKENS_STR + DEFAULT_GRD_TOKEN + '\n' + query + COT_ACTIVATION
+        else:
+            query = ALL_IMG_TOKENS_STR + '\n' + query
+        conversation = [{'from': 'human', 'value': query}]
+    item = {'input_images': [image], 'conversation': conversation}
+    if options is not None:
+        item['options'] = options
+    input_item = preprocessor(item)
+    collator = SFT_DataCollator(tokenizer=preprocessor.tokenizer, sd_tokenizer=None)
+    return collator([input_item])
+
+
+def _completion_metadata(model, tokenizer, response, sequences, prompt_length):
+    generated_ids = sequences[0, prompt_length:].detach().cpu().tolist()
+    return {
+        'response': response[0],
+        'generated_ids': generated_ids,
+        'boxes': extract_all_box_str(response[0], mistral=True),
+        'bound_boxes': getattr(model, 'last_bound_boxes', None),
+        'finished_with_eos': bool(generated_ids and generated_ids[-1] == tokenizer.eos_token_id),
+    }
+
+
+def counterfactual_infer(model, preprocessor, image, query, cot=True, max_new_tokens=1024,
+                         temperature=0.0, perturb_index=None, selection_seed=None,
+                         perturb_seed=None, perturb_iou_range=(0.0, 0.2),
+                         perturb_box_mode='random', random_box_min_size=0.05,
+                         random_box_max_size=0.5, conversation=None, options=None,
+                         return_sequences=False, allow_missing_coordinates=False):
+    """Replace one baseline grounding box and freely decode the following CoT.
+
+    A normal rollout first determines the number and token offsets of generated
+    coordinates.  The counterfactual rollout exactly replays all generated text
+    through the selected ``<coor>`` token, replaces only that coordinate, then
+    releases decoding after its closing ``</coor>``.
+    """
+    baseline_batch = _build_inference_batch(
+        preprocessor, image, query, cot, conversation=conversation, options=options
+    )
+    prompt_length = baseline_batch['input_ids'].shape[-1]
+    baseline_response, _, baseline_sequences = model.condition_completion(
+        baseline_batch,
+        avoid_image_gen=True,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        record_bound_boxes=True,
+    )
+    baseline = _completion_metadata(
+        model, preprocessor.tokenizer, baseline_response, baseline_sequences, prompt_length
+    )
+    spans = find_coordinate_spans(
+        baseline['generated_ids'], model.boc_token_id, model.eoc_token_id
+    )
+    if len(spans) != len(baseline['boxes']):
+        raise RuntimeError(
+            f"baseline has {len(spans)} token coordinate spans but {len(baseline['boxes'])} parseable boxes"
+        )
+    if not spans:
+        if not allow_missing_coordinates:
+            raise RuntimeError('baseline generated no coordinate spans; counterfactual intervention is unavailable')
+        result = {
+            'baseline': baseline,
+            'intervention': {
+                'available': False,
+                'reason': 'baseline generated no coordinate spans',
+                'baseline_coordinate_count': 0,
+            },
+            'counterfactual': None,
+        }
+        if return_sequences:
+            result['_baseline_sequences'] = baseline_sequences
+            result['_counterfactual_sequences'] = None
+        return result
+
+    if perturb_index is None:
+        intervention_index = random.Random(selection_seed).randrange(len(spans))
+    elif perturb_index == 'last':
+        intervention_index = len(spans) - 1
+    else:
+        intervention_index = int(perturb_index) - 1
+        if not 0 <= intervention_index < len(spans):
+            raise ValueError(f"perturb_index must be in [1, {len(spans)}]")
+    baseline_box = tuple(baseline['boxes'][intervention_index])
+    perturb_rng = random.Random(perturb_seed)
+    if perturb_box_mode == 'random':
+        replacement_box = make_random_box_perturbation(
+            baseline_box,
+            perturb_rng,
+            iou_range=perturb_iou_range,
+            min_box_size=random_box_min_size,
+            max_box_size=random_box_max_size,
+        )
+    elif perturb_box_mode == 'same_shape':
+        replacement_box = make_same_shape_perturbation(
+            baseline_box,
+            perturb_rng,
+            iou_range=perturb_iou_range,
+        )
+    else:
+        raise ValueError("perturb_box_mode must be 'random' or 'same_shape'")
+    processor = PrefixReplayCoordinateLogitsProcessor(
+        preprocessor.tokenizer,
+        prompt_length=prompt_length,
+        baseline_generated_ids=baseline['generated_ids'],
+        intervention_boc_offset=spans[intervention_index][0],
+        replacement_box=replacement_box,
+    )
+
+    counterfactual_batch = _build_inference_batch(
+        preprocessor, image, query, cot, conversation=conversation, options=options
+    )
+    counterfactual_response, _, counterfactual_sequences = model.condition_completion(
+        counterfactual_batch,
+        avoid_image_gen=True,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        logits_processor=LogitsProcessorList([processor]),
+        record_bound_boxes=True,
+    )
+    counterfactual = _completion_metadata(
+        model, preprocessor.tokenizer, counterfactual_response,
+        counterfactual_sequences, prompt_length
+    )
+    replay_length = spans[intervention_index][0] + 1
+    prefix_verified = (
+        counterfactual['generated_ids'][:replay_length]
+        == baseline['generated_ids'][:replay_length]
+    )
+    if not prefix_verified:
+        raise RuntimeError('counterfactual prefix does not match the replayed baseline prefix')
+    if len(counterfactual['boxes']) <= intervention_index:
+        raise RuntimeError('counterfactual generation ended before the replacement coordinate was decoded')
+    if counterfactual['boxes'][intervention_index] != list(replacement_box):
+        raise RuntimeError('counterfactual text does not contain the replacement coordinate')
+    if counterfactual['bound_boxes'] is not None:
+        if len(counterfactual['bound_boxes']) <= intervention_index:
+            raise RuntimeError('box_align did not bind the replacement coordinate')
+        if tuple(counterfactual['bound_boxes'][intervention_index]) != replacement_box:
+            raise RuntimeError('box_align did not receive the replacement coordinate')
+
+    result = {
+        'baseline': baseline,
+        'intervention': {
+            'index': intervention_index + 1,
+            'baseline_box': baseline_box,
+            'replacement_box': replacement_box,
+            'replacement_iou': box_iou(baseline_box, replacement_box),
+            'perturb_box_mode': perturb_box_mode,
+            'baseline_coordinate_count': len(spans),
+            'replayed_prefix_token_count': replay_length,
+            'prefix_verified': prefix_verified,
+            'processor_released': processor.released,
+        },
+        'counterfactual': counterfactual,
+    }
+    if return_sequences:
+        result['_baseline_sequences'] = baseline_sequences
+        result['_counterfactual_sequences'] = counterfactual_sequences
+    return result
+
+
+def counterfactual_option_infer(model, preprocessor, image, conversation, options,
+                                max_new_tokens=1024, temperature=0.0,
+                                perturb_index=None, selection_seed=None, perturb_seed=None,
+                                perturb_iou_range=(0.0, 0.2), perturb_box_mode='random',
+                                random_box_min_size=0.05, random_box_max_size=0.5,
+                                likelihood_reduction='mean', further_instruct=True):
+    """Score baseline and counterfactual CoTs with the original option metric.
+
+    ``conversation`` must be the benchmark's already formatted prompt.  This
+    keeps the initial CoT prompt and the option-likelihood suffix identical to
+    the project's standard VStar evaluation.
+    """
+    rollout = counterfactual_infer(
+        model, preprocessor, image, query=None, cot=True,
+        max_new_tokens=max_new_tokens, temperature=temperature,
+        perturb_index=perturb_index, selection_seed=selection_seed,
+        perturb_seed=perturb_seed, perturb_iou_range=perturb_iou_range,
+        perturb_box_mode=perturb_box_mode,
+        random_box_min_size=random_box_min_size,
+        random_box_max_size=random_box_max_size,
+        conversation=conversation, options=options, return_sequences=True,
+        allow_missing_coordinates=True,
+    )
+    baseline_sequences = rollout.pop('_baseline_sequences')
+    counterfactual_sequences = rollout.pop('_counterfactual_sequences')
+
+    def score_option_sequences(sequences):
+        score_batch = _build_inference_batch(
+            preprocessor, image, conversation=conversation, options=options
+        )
+        with torch.inference_mode():
+            prediction, _ = model.calculate_options(
+                score_batch, cot=True, further_instruct=further_instruct,
+                temperature=temperature, max_new_tokens=max_new_tokens,
+                likelihood_reduction=likelihood_reduction,
+                thought_override_ids=sequences,
+            )
+        return int(prediction)
+
+    baseline_prediction = score_option_sequences(baseline_sequences)
+    rollout['baseline_prediction'] = baseline_prediction
+    rollout['baseline_answer'] = options[baseline_prediction]
+    if counterfactual_sequences is not None:
+        counterfactual_prediction = score_option_sequences(counterfactual_sequences)
+        rollout['counterfactual_prediction'] = counterfactual_prediction
+        rollout['counterfactual_answer'] = options[counterfactual_prediction]
+    else:
+        rollout['counterfactual_prediction'] = None
+        rollout['counterfactual_answer'] = None
+    return rollout
             
 
 if __name__=='__main__':

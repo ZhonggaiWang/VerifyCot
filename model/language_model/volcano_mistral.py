@@ -422,10 +422,13 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
             self.cache_images = self.encode_img(model_inputs['input_images'][0][:1])[0]
         valid_start_ind = torch.where(original_input_ids==self.boc_token_id)[1].tolist()[-1]
         current_box_text = self.tokenizer.decode(original_input_ids[0, valid_start_ind:])
-        current_box = torch.tensor(extract_box_str(current_box_text, mistral=True), dtype=self.dtype, device=self.cache_images.device)
-        if current_box is None:
+        current_box_values = extract_box_str(current_box_text, mistral=True)
+        if current_box_values is None:
             print('fail to detect correct box from {}'.format(current_box_text))
             raise ValueError
+        current_box = torch.tensor(current_box_values, dtype=self.dtype, device=self.cache_images.device)
+        if self.last_bound_boxes is not None:
+            self.last_bound_boxes.append(tuple(float(value) for value in current_box_values))
         box_feat = self.box_align(self.cache_images[0], current_box.unsqueeze(0))[0]
         init_inputs_embeds = self.get_input_embeddings()(model_inputs['input_ids'])
         next_inputs_embeds = torch.cat([init_inputs_embeds, box_feat.unsqueeze(0)], dim=1)
@@ -502,10 +505,11 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
         return last_hidden_state
 
     def condition_completion(self, input_dict, temperature=0.2, max_new_tokens=128, guidance_scale=7.5,
-                             avoid_image_gen=False, logits_processor=None, **kwargs):
+                             avoid_image_gen=False, logits_processor=None, record_bound_boxes=False, **kwargs):
         
         self.to_generate_images = []
         self.cache_images = None
+        self.last_bound_boxes = [] if record_bound_boxes else None
         self.boi_token = self.tokenizer.convert_tokens_to_ids([DEFAULT_BOI_TOKEN])[0]
         if self.sub_image_bind:
             self.cache_raw_image = input_dict['raw_images'][0][0]
@@ -549,7 +553,7 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
                 output_images.append(out_img)
         return pred_out, output_images, text_out.sequences
 
-    def calculate_options(self, input_dict, cot=False, further_instruct=False, temperature=0.2, max_new_tokens=128, guidance_scale=7.5, avoid_image_gen=False, likelihood_reduction='mean', **kwargs):
+    def calculate_options(self, input_dict, cot=False, further_instruct=False, temperature=0.2, max_new_tokens=128, guidance_scale=7.5, avoid_image_gen=False, likelihood_reduction='mean', thought_override_ids=None, **kwargs):
         
         assert len(input_dict['options']) == 1
         self.cache_images = None
@@ -569,25 +573,30 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
         else:
             input_dict['input_images'] = [input_dict['input_images'].to(self.dtype).to(self.device)] if input_dict['input_images'] is not None else [None]
         if cot:
-            # need to first conduct the thinking
-            with torch.no_grad():
-                text_out = self.generate(
-                            input_ids = input_dict['input_ids'].to(self.device), # TODO unsqueeze is for bs==1
-                            input_images=input_dict['input_images'] if input_dict['input_images'] is not None else [None],
-                            attention_mask = input_dict['attention_mask'].to(self.device),
-                            box = input_dict['box'] if 'box' in input_dict else None,
-                            do_sample = True if temperature > 0 else False,
-                            temperature=temperature,
-                            max_new_tokens = max_new_tokens,
-                            pad_token_id = self.tokenizer.pad_token_id,
-                            return_dict_in_generate = True
-                        )
-            thought_ids = text_out.sequences
+            # ``thought_override_ids`` permits counterfactual evaluations to
+            # score options against an externally generated CoT while retaining
+            # the original option-likelihood evaluation path.
+            if thought_override_ids is None:
+                with torch.no_grad():
+                    text_out = self.generate(
+                                input_ids = input_dict['input_ids'].to(self.device), # TODO unsqueeze is for bs==1
+                                input_images=input_dict['input_images'] if input_dict['input_images'] is not None else [None],
+                                attention_mask = input_dict['attention_mask'].to(self.device),
+                                box = input_dict['box'] if 'box' in input_dict else None,
+                                do_sample = True if temperature > 0 else False,
+                                temperature=temperature,
+                                max_new_tokens = max_new_tokens,
+                                pad_token_id = self.tokenizer.pad_token_id,
+                                return_dict_in_generate = True
+                            )
+                thought_ids = text_out.sequences
+            else:
+                thought_ids = thought_override_ids
             input_token_len = input_dict['input_ids'].shape[1]
-            n_diff_input_output = (input_dict['input_ids'].to(self.device) != text_out.sequences[:, :input_token_len]).sum().item()
+            n_diff_input_output = (input_dict['input_ids'].to(self.device) != thought_ids[:, :input_token_len]).sum().item()
             if n_diff_input_output > 0:
                 print(f'[Warning] {n_diff_input_output} output_ids are not the same as the input_ids')
-            thought = self.tokenizer.batch_decode(text_out.sequences[:, input_token_len:], skip_special_tokens=False)[0]
+            thought = self.tokenizer.batch_decode(thought_ids[:, input_token_len:], skip_special_tokens=False)[0]
             thought_ids = thought_ids.squeeze()
             if further_instruct:
                 # need to instruct the model to select from options!
