@@ -1,0 +1,54 @@
+{
+  "total_records": 1,
+  "successful_records": 1,
+  "errors": 0,
+  "no_coordinate": 0,
+  "all_samples": {
+    "samples": 1,
+    "baseline_accuracy": 1.0,
+    "baseline_accuracy_count": 1,
+    "counterfactual_accuracy": 1.0,
+    "counterfactual_accuracy_count": 1,
+    "counterfactual_minus_baseline": 0.0,
+    "answer_changed_count": 0,
+    "correctness_transitions": {
+      "correct_to_wrong": 0,
+      "wrong_to_correct": 0,
+      "correct_to_correct": 1,
+      "wrong_to_wrong": 0
+    }
+  },
+  "by_structural_type": {
+    "query": {
+      "samples": 1,
+      "baseline_accuracy": 1.0,
+      "baseline_accuracy_count": 1,
+      "counterfactual_accuracy": 1.0,
+      "counterfactual_accuracy_count": 1,
+      "counterfactual_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 1,
+        "wrong_to_wrong": 0
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "max_new_tokens": 512,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0,
+    "perturb_mode": "random_box",
+    "perturb_position": "first",
+    "perturb_index": null,
+    "selection_seed": 2026,
+    "perturb_seed": 2027,
+    "iou_range": [
+      0.0,
+      0.1
+    ],
+    "perturb_box_mode": "random"
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "shard_paths": [
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/online_oracle/shards/shard_000/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/online_oracle/shards/shard_001/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/online_oracle/shards/shard_002/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/online_oracle/shards/shard_003/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/online_oracle/shards/shard_004/results.jsonl"
+  ],
+  "total_records": 1000,
+  "successful_records": 997,
+  "errors": 3,
+  "all_samples": {
+    "samples": 997,
+    "baseline_accuracy": 0.7382146439317954,
+    "baseline_accuracy_count": 997,
+    "oracle_accuracy": 0.7703109327983951,
+    "oracle_accuracy_count": 997,
+    "oracle_minus_baseline": 0.032096288866599765,
+    "answer_changed_count": 85,
+    "correctness_transitions": {
+      "correct_to_wrong": 16,
+      "wrong_to_correct": 48,
+      "correct_to_correct": 720,
+      "wrong_to_wrong": 213
+    },
+    "forced_sample_count": 950,
+    "total_forced_coordinate_count": 2172
+  },
+  "by_structural_type": {
+    "choose": {
+      "samples": 145,
+      "baseline_accuracy": 0.8620689655172413,
+      "baseline_accuracy_count": 145,
+      "oracle_accuracy": 0.9517241379310345,
+      "oracle_accuracy_count": 145,
+      "oracle_minus_baseline": 0.08965517241379317,
+      "answer_changed_count": 13,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 13,
+        "correct_to_correct": 125,
+        "wrong_to_wrong": 7
+      },
+      "forced_sample_count": 129,
+      "total_forced_coordinate_count": 311
+    },
+    "compare": {
+      "samples": 34,
+      "baseline_accuracy": 0.6176470588235294,
+      "baseline_accuracy_count": 34,
+      "oracle_accuracy": 0.5294117647058824,
+      "oracle_accuracy_count": 34,
+      "oracle_minus_baseline": -0.08823529411764708,
+      "answer_changed_count": 3,
+      "correctness_transitions": {
+        "correct_to_wrong": 3,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 18,
+        "wrong_to_wrong": 13
+      },
+      "forced_sample_count": 34,
+      "total_forced_coordinate_count": 135
+    },
+    "logical": {
+      "samples": 120,
+      "baseline_accuracy": 0.8916666666666667,
+      "baseline_accuracy_count": 120,
+      "oracle_accuracy": 0.9,
+      "oracle_accuracy_count": 120,
+      "oracle_minus_baseline": 0.008333333333333304,
+      "answer_changed_count": 2,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 1,
+        "correct_to_correct": 107,
+        "wrong_to_wrong": 12
+      },
+      "forced_sample_count": 117,
+      "total_forced_coordinate_count": 360
+    },
+    "query": {
+      "samples": 462,
+      "baseline_accuracy": 0.6038961038961039,
+      "baseline_accuracy_count": 462,
+      "oracle_accuracy": 0.6471861471861472,
+      "oracle_accuracy_count": 462,
+      "oracle_minus_baseline": 0.04329004329004327,
+      "answer_changed_count": 58,
+      "correctness_transitions": {
+        "correct_to_wrong": 9,
+        "wrong_to_correct": 29,
+        "correct_to_correct": 270,
+        "wrong_to_wrong": 154
+      },
+      "forced_sample_count": 441,
+      "total_forced_coordinate_count": 898
+    },
+    "verify": {
+      "samples": 236,
+      "baseline_accuracy": 0.864406779661017,
+      "baseline_accuracy_count": 236,
+      "oracle_accuracy": 0.8686440677966102,
+      "oracle_accuracy_count": 236,
+      "oracle_minus_baseline": 0.004237288135593209,
+      "answer_changed_count": 9,
+      "correctness_transitions": {
+        "correct_to_wrong": 4,
+        "wrong_to_correct": 5,
+        "correct_to_correct": 200,
+        "wrong_to_wrong": 27
+      },
+      "forced_sample_count": 229,
+      "total_forced_coordinate_count": 468
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "sharded": true,
+    "oracle_mode": "online_explicit_target_oracle",
+    "context_window_tokens": 48,
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0
+  }
+}

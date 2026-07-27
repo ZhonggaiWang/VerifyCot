@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 
@@ -29,8 +30,19 @@ class CLIPVisionTower(nn.Module):
             from transformers import ChineseCLIPImageProcessor as CLIPImageProcessor
         else:
             from transformers import CLIPVisionModel, CLIPImageProcessor
-        self.image_processor = CLIPImageProcessor.from_pretrained(self.vision_tower_name)
-        self.vision_tower = CLIPVisionModel.from_pretrained(self.vision_tower_name)
+        # Preserve the model config's canonical ``openai/...`` identifier while
+        # allowing offline evaluation with a complete local CLIP checkpoint.
+        project_clip_path = os.path.realpath(os.path.join(
+            os.path.dirname(__file__), '..', '..', 'weights',
+            'clip-vit-large-patch14-336',
+        ))
+        local_vision_tower = os.environ.get('VOCOT_CLIP_VISION_PATH', project_clip_path)
+        vision_tower_path = (
+            local_vision_tower if os.path.isdir(local_vision_tower)
+            else self.vision_tower_name
+        )
+        self.image_processor = CLIPImageProcessor.from_pretrained(vision_tower_path)
+        self.vision_tower = CLIPVisionModel.from_pretrained(vision_tower_path)
         self.vision_tower.requires_grad_(False)
         self.image_size = self.vision_tower.config.image_size
 

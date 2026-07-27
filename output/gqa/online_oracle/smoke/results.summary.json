@@ -1,0 +1,51 @@
+{
+  "total_records": 1,
+  "successful_records": 1,
+  "errors": 0,
+  "all_samples": {
+    "samples": 1,
+    "baseline_accuracy": 1.0,
+    "baseline_accuracy_count": 1,
+    "oracle_accuracy": 1.0,
+    "oracle_accuracy_count": 1,
+    "oracle_minus_baseline": 0.0,
+    "forced_sample_count": 1,
+    "total_forced_coordinate_count": 2,
+    "answer_changed_count": 0,
+    "correctness_transitions": {
+      "correct_to_wrong": 0,
+      "wrong_to_correct": 0,
+      "correct_to_correct": 1,
+      "wrong_to_wrong": 0
+    }
+  },
+  "by_structural_type": {
+    "query": {
+      "samples": 1,
+      "baseline_accuracy": 1.0,
+      "baseline_accuracy_count": 1,
+      "oracle_accuracy": 1.0,
+      "oracle_accuracy_count": 1,
+      "oracle_minus_baseline": 0.0,
+      "forced_sample_count": 1,
+      "total_forced_coordinate_count": 2,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 1,
+        "wrong_to_wrong": 0
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "max_new_tokens": 512,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0,
+    "context_window_tokens": 48,
+    "oracle_mode": "online_explicit_target_oracle",
+    "coreference": "off",
+    "alias_policy": "normalized full GQA scene-graph object name only"
+  }
+}

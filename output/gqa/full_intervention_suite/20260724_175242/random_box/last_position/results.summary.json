@@ -1,0 +1,122 @@
+{
+  "shard_paths": [
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/last_position/shards/shard_000/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/last_position/shards/shard_001/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/last_position/shards/shard_002/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/last_position/shards/shard_003/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/last_position/shards/shard_004/results.jsonl"
+  ],
+  "total_records": 1000,
+  "successful_records": 1000,
+  "errors": 0,
+  "all_samples": {
+    "samples": 999,
+    "baseline_accuracy": 0.7397397397397397,
+    "baseline_accuracy_count": 999,
+    "counterfactual_accuracy": 0.7277277277277278,
+    "counterfactual_accuracy_count": 999,
+    "counterfactual_minus_baseline": -0.012012012012011963,
+    "answer_changed_count": 39,
+    "correctness_transitions": {
+      "correct_to_wrong": 25,
+      "wrong_to_correct": 13,
+      "correct_to_correct": 714,
+      "wrong_to_wrong": 247
+    }
+  },
+  "by_structural_type": {
+    "choose": {
+      "samples": 145,
+      "baseline_accuracy": 0.8620689655172413,
+      "baseline_accuracy_count": 145,
+      "counterfactual_accuracy": 0.8275862068965517,
+      "counterfactual_accuracy_count": 145,
+      "counterfactual_minus_baseline": -0.03448275862068961,
+      "answer_changed_count": 17,
+      "correctness_transitions": {
+        "correct_to_wrong": 11,
+        "wrong_to_correct": 6,
+        "correct_to_correct": 114,
+        "wrong_to_wrong": 14
+      }
+    },
+    "compare": {
+      "samples": 34,
+      "baseline_accuracy": 0.6176470588235294,
+      "baseline_accuracy_count": 34,
+      "counterfactual_accuracy": 0.6176470588235294,
+      "counterfactual_accuracy_count": 34,
+      "counterfactual_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 21,
+        "wrong_to_wrong": 13
+      }
+    },
+    "logical": {
+      "samples": 120,
+      "baseline_accuracy": 0.8916666666666667,
+      "baseline_accuracy_count": 120,
+      "counterfactual_accuracy": 0.8916666666666667,
+      "counterfactual_accuracy_count": 120,
+      "counterfactual_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 107,
+        "wrong_to_wrong": 13
+      }
+    },
+    "query": {
+      "samples": 463,
+      "baseline_accuracy": 0.6047516198704104,
+      "baseline_accuracy_count": 463,
+      "counterfactual_accuracy": 0.6090712742980562,
+      "counterfactual_accuracy_count": 463,
+      "counterfactual_minus_baseline": 0.004319654427645814,
+      "answer_changed_count": 5,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 3,
+        "correct_to_correct": 279,
+        "wrong_to_wrong": 180
+      }
+    },
+    "verify": {
+      "samples": 237,
+      "baseline_accuracy": 0.869198312236287,
+      "baseline_accuracy_count": 237,
+      "counterfactual_accuracy": 0.8312236286919831,
+      "counterfactual_accuracy_count": 237,
+      "counterfactual_minus_baseline": -0.03797468354430389,
+      "answer_changed_count": 17,
+      "correctness_transitions": {
+        "correct_to_wrong": 13,
+        "wrong_to_correct": 4,
+        "correct_to_correct": 193,
+        "wrong_to_wrong": 27
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "sharded": true,
+    "perturb_mode": "random_box",
+    "perturb_position": "last",
+    "perturb_index": null,
+    "selection_seed": 2026,
+    "perturb_seed": 2027,
+    "iou_range": [
+      0.0,
+      0.1
+    ],
+    "perturb_box_mode": "random",
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0
+  },
+  "no_coordinate": 1
+}

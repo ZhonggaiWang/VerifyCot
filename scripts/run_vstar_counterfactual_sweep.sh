@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Launch VStar counterfactual runs whenever a sufficiently idle GPU is found.
 # Usage: scripts/run_vstar_counterfactual_sweep.sh {random|first|last|all}
+# Set INTERVENTION_MODE=random_box (default) or remove_grounding.
 
 set -euo pipefail
 
@@ -15,7 +16,7 @@ esac
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-RUNS=${RUNS:-10}
+RUNS=${RUNS:-2}
 GPU_IDLE_MEMORY_MB=${GPU_IDLE_MEMORY_MB:-500}
 POLL_SECONDS=${POLL_SECONDS:-30}
 # Set GPU_IDS=0,1,2 (or CUDA_VISIBLE_DEVICES=0,1,2) before launching to
@@ -26,9 +27,17 @@ VSTAR_QUESTIONS_PATH=${VSTAR_QUESTIONS_PATH:-/data/zhonggai/VStar/test_questions
 VSTAR_IMAGE_DIR=${VSTAR_IMAGE_DIR:-/data/zhonggai/VStar}
 MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-2048}
 IOU_MAX=${IOU_MAX:-0.1}
-OUTPUT_ROOT=${OUTPUT_ROOT:-$PROJECT_ROOT/output/vstar_counterfactual_sweeps}
+INTERVENTION_MODE=${INTERVENTION_MODE:-random_box}
+case "$INTERVENTION_MODE" in
+  random_box|remove_grounding) ;;
+  *)
+    echo "INTERVENTION_MODE must be random_box or remove_grounding, got: $INTERVENTION_MODE" >&2
+    exit 2
+    ;;
+esac
+OUTPUT_ROOT=${OUTPUT_ROOT:-$PROJECT_ROOT/output/vstar/counterfactual}
 RUN_TAG=${RUN_TAG:-$(date +%Y%m%d_%H%M%S)}
-RUN_ROOT="$OUTPUT_ROOT/$RUN_TAG"
+RUN_ROOT="$OUTPUT_ROOT/$INTERVENTION_MODE/$RUN_TAG"
 
 if ! command -v nvidia-smi >/dev/null 2>&1; then
   echo "nvidia-smi is required to detect idle GPUs." >&2
@@ -70,6 +79,7 @@ case "$MODE" in
 esac
 
 mkdir -p "$RUN_ROOT"
+echo "Intervention mode: $INTERVENTION_MODE"
 echo "Run root: $RUN_ROOT"
 echo "Tasks: ${#TASK_GROUPS[@]}; idle GPU threshold: ${GPU_IDLE_MEMORY_MB} MB"
 
@@ -137,12 +147,13 @@ launch_task() {
   (
     cd "$PROJECT_ROOT"
     CUDA_VISIBLE_DEVICES="$gpu" PYTHONUNBUFFERED=1 conda run -n vocot python -u \
-      eval/evaluate_vstar_counterfactual.py \
+      eval/Oracle_experiment/vstar/evaluate_counterfactual.py \
       --model-path "$MODEL_PATH" \
       --questions-path "$VSTAR_QUESTIONS_PATH" \
       --image-dir "$VSTAR_IMAGE_DIR" \
       --output "$output_path" \
       --perturb-position "$position" \
+      --perturb-mode "$INTERVENTION_MODE" \
       --random-seeds \
       --iou-max "$IOU_MAX" \
       --max-new-tokens "$MAX_NEW_TOKENS"

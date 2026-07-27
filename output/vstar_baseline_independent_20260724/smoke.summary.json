@@ -1,0 +1,46 @@
+{
+  "total_records": 1,
+  "successful_records": 1,
+  "errors": 0,
+  "no_coordinate": 0,
+  "intervened_records": 0,
+  "baseline_accuracy_all": 1.0,
+  "baseline_accuracy_all_count": 1,
+  "baseline_accuracy_paired_subset": null,
+  "counterfactual_accuracy_paired_subset": null,
+  "paired_subset_count": 0,
+  "counterfactual_accuracy_count": 0,
+  "answer_changed_rate": null,
+  "answer_changed_count": 0,
+  "correctness_transitions": {
+    "correct_to_wrong": 0,
+    "wrong_to_correct": 0,
+    "correct_to_correct": 0,
+    "wrong_to_wrong": 0
+  },
+  "correctness_transition_rates": {
+    "correct_to_wrong": null,
+    "wrong_to_correct": null,
+    "correct_to_correct": null,
+    "wrong_to_wrong": null
+  },
+  "settings": {
+    "baseline_only": true,
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "likelihood_reduction": "mean",
+    "perturb_index": null,
+    "perturb_position": "random",
+    "selection_seed": 2026,
+    "perturb_seed": 2027,
+    "iou_range": [
+      0.0,
+      0.1
+    ],
+    "perturb_box_mode": "random",
+    "random_box_size_range": [
+      0.05,
+      0.5
+    ]
+  }
+}

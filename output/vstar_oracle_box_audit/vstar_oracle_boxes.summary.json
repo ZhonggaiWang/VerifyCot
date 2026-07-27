@@ -1,0 +1,30 @@
+{
+  "questions_path": "/data/zhonggai/VStar/test_questions.jsonl",
+  "dataset_root": "/data/zhonggai/VStar",
+  "total_samples": 191,
+  "valid_oracle_samples": 191,
+  "invalid_samples": 0,
+  "category_counts": {
+    "direct_attributes": 115,
+    "relative_position": 76
+  },
+  "valid_category_counts": {
+    "direct_attributes": 115,
+    "relative_position": 76
+  },
+  "target_object_count_distribution": {
+    "1": 137,
+    "2": 54
+  },
+  "question_target_coverage": {
+    "complete": 169,
+    "partial": 22
+  },
+  "error_counts": {},
+  "errors": [],
+  "coordinate_convention": {
+    "input_bbox": "[x, y, width, height] in original image pixels",
+    "output_bbox": "[x1, y1, x2, y2] normalized to [0, 1]",
+    "normalization": "x1=x/W, y1=y/H, x2=(x+w)/W, y2=(y+h)/H"
+  }
+}

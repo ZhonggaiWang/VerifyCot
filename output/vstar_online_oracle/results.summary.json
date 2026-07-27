@@ -1,0 +1,88 @@
+{
+  "total_records": 191,
+  "successful_records": 191,
+  "errors": 0,
+  "all_samples": {
+    "samples": 191,
+    "baseline_accuracy": 0.6020942408376964,
+    "baseline_accuracy_count": 191,
+    "oracle_accuracy": 0.6649214659685864,
+    "oracle_accuracy_count": 191,
+    "oracle_minus_baseline": 0.06282722513089001,
+    "answer_changed_count": 35,
+    "forced_sample_count": 159,
+    "no_forced_match_sample_count": 32,
+    "total_forced_coordinate_count": 298,
+    "correctness_transitions": {
+      "correct_to_wrong": 9,
+      "wrong_to_correct": 21,
+      "correct_to_correct": 106,
+      "wrong_to_wrong": 55
+    }
+  },
+  "complete_target_coverage_subset": {
+    "samples": 169,
+    "baseline_accuracy": 0.5976331360946746,
+    "baseline_accuracy_count": 169,
+    "oracle_accuracy": 0.6331360946745562,
+    "oracle_accuracy_count": 169,
+    "oracle_minus_baseline": 0.035502958579881616,
+    "answer_changed_count": 29,
+    "forced_sample_count": 144,
+    "no_forced_match_sample_count": 25,
+    "total_forced_coordinate_count": 276,
+    "correctness_transitions": {
+      "correct_to_wrong": 9,
+      "wrong_to_correct": 15,
+      "correct_to_correct": 92,
+      "wrong_to_wrong": 53
+    }
+  },
+  "by_category": {
+    "direct_attributes": {
+      "samples": 115,
+      "baseline_accuracy": 0.5652173913043478,
+      "baseline_accuracy_count": 115,
+      "oracle_accuracy": 0.6,
+      "oracle_accuracy_count": 115,
+      "oracle_minus_baseline": 0.034782608695652195,
+      "answer_changed_count": 17,
+      "forced_sample_count": 98,
+      "no_forced_match_sample_count": 17,
+      "total_forced_coordinate_count": 181,
+      "correctness_transitions": {
+        "correct_to_wrong": 4,
+        "wrong_to_correct": 8,
+        "correct_to_correct": 61,
+        "wrong_to_wrong": 42
+      }
+    },
+    "relative_position": {
+      "samples": 76,
+      "baseline_accuracy": 0.6578947368421053,
+      "baseline_accuracy_count": 76,
+      "oracle_accuracy": 0.7631578947368421,
+      "oracle_accuracy_count": 76,
+      "oracle_minus_baseline": 0.10526315789473684,
+      "answer_changed_count": 18,
+      "forced_sample_count": 61,
+      "no_forced_match_sample_count": 15,
+      "total_forced_coordinate_count": 117,
+      "correctness_transitions": {
+        "correct_to_wrong": 5,
+        "wrong_to_correct": 13,
+        "correct_to_correct": 45,
+        "wrong_to_wrong": 13
+      }
+    }
+  },
+  "settings": {
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "likelihood_reduction": "mean",
+    "context_window_tokens": 48,
+    "oracle_mode": "online_explicit_target_oracle",
+    "coreference": "off",
+    "alias_policy": "normalized full target-object phrase only"
+  }
+}

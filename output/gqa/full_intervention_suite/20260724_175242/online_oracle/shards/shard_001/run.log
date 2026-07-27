@@ -1,0 +1,134 @@
+GQA manifest samples: 1000; evaluating: 200; resumed: 0
+Create VIT
+End Create VIT
+Create Front Projector
+End Create Front Projector
+{
+  "total_records": 200,
+  "successful_records": 200,
+  "errors": 0,
+  "all_samples": {
+    "samples": 200,
+    "baseline_accuracy": 0.725,
+    "baseline_accuracy_count": 200,
+    "oracle_accuracy": 0.765,
+    "oracle_accuracy_count": 200,
+    "oracle_minus_baseline": 0.040000000000000036,
+    "forced_sample_count": 190,
+    "total_forced_coordinate_count": 433,
+    "answer_changed_count": 19,
+    "correctness_transitions": {
+      "correct_to_wrong": 4,
+      "wrong_to_correct": 12,
+      "correct_to_correct": 141,
+      "wrong_to_wrong": 43
+    }
+  },
+  "by_structural_type": {
+    "choose": {
+      "samples": 33,
+      "baseline_accuracy": 0.8484848484848485,
+      "baseline_accuracy_count": 33,
+      "oracle_accuracy": 0.9696969696969697,
+      "oracle_accuracy_count": 33,
+      "oracle_minus_baseline": 0.12121212121212122,
+      "forced_sample_count": 30,
+      "total_forced_coordinate_count": 72,
+      "answer_changed_count": 4,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 4,
+        "correct_to_correct": 28,
+        "wrong_to_wrong": 1
+      }
+    },
+    "compare": {
+      "samples": 9,
+      "baseline_accuracy": 0.5555555555555556,
+      "baseline_accuracy_count": 9,
+      "oracle_accuracy": 0.4444444444444444,
+      "oracle_accuracy_count": 9,
+      "oracle_minus_baseline": -0.11111111111111116,
+      "forced_sample_count": 9,
+      "total_forced_coordinate_count": 36,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 4,
+        "wrong_to_wrong": 4
+      }
+    },
+    "logical": {
+      "samples": 27,
+      "baseline_accuracy": 0.8888888888888888,
+      "baseline_accuracy_count": 27,
+      "oracle_accuracy": 0.8888888888888888,
+      "oracle_accuracy_count": 27,
+      "oracle_minus_baseline": 0.0,
+      "forced_sample_count": 27,
+      "total_forced_coordinate_count": 76,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 24,
+        "wrong_to_wrong": 3
+      }
+    },
+    "query": {
+      "samples": 89,
+      "baseline_accuracy": 0.5730337078651685,
+      "baseline_accuracy_count": 89,
+      "oracle_accuracy": 0.6179775280898876,
+      "oracle_accuracy_count": 89,
+      "oracle_minus_baseline": 0.0449438202247191,
+      "forced_sample_count": 84,
+      "total_forced_coordinate_count": 167,
+      "answer_changed_count": 12,
+      "correctness_transitions": {
+        "correct_to_wrong": 3,
+        "wrong_to_correct": 7,
+        "correct_to_correct": 48,
+        "wrong_to_wrong": 31
+      }
+    },
+    "verify": {
+      "samples": 42,
+      "baseline_accuracy": 0.8809523809523809,
+      "baseline_accuracy_count": 42,
+      "oracle_accuracy": 0.9047619047619048,
+      "oracle_accuracy_count": 42,
+      "oracle_minus_baseline": 0.023809523809523836,
+      "forced_sample_count": 40,
+      "total_forced_coordinate_count": 82,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 1,
+        "correct_to_correct": 37,
+        "wrong_to_wrong": 4
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0,
+    "context_window_tokens": 48,
+    "oracle_mode": "online_explicit_target_oracle",
+    "coreference": "off",
+    "alias_policy": "normalized full GQA scene-graph object name only"
+  }
+}
+Per-example results: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/online_oracle/shards/shard_001/results.jsonl
+Summary: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/online_oracle/shards/shard_001/results.summary.json
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+You are using a model of type EditGPTMistral to instantiate a model of type VolCanoMistral. This is not supported for all configurations of models and can yield errors.
+/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:06,  2.13s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:04<00:04,  2.08s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:07<00:02,  2.78s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:08<00:00,  1.98s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:08<00:00,  2.13s/it]
+GQA online oracle evaluation:   0%|          | 0/200 [00:00<?, ?it/s]/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/transformers/generation/configuration_utils.py:392: UserWarning: `do_sample` is set to `False`. However, `temperature` is set to `0.0` -- this flag is only used in sample-based generation modes. You should set `do_sample=True` or unset `temperature`.
+  warnings.warn(
+GQA online oracle evaluation:   0%|          | 1/200 [00:04<14:16,  4.31s/it]GQA online oracle evaluation:   1%|          | 2/200 [00:09<15:30,  4.70s/it]GQA online oracle evaluation:   2%|▏         | 3/200 [00:13<14:12,  4.33s/it]GQA online oracle evaluation:   2%|▏         | 4/200 [00:19<17:20,  5.31s/it]GQA online oracle evaluation:   2%|▎         | 5/200 [00:27<19:17,  5.93s/it]GQA online oracle evaluation:   3%|▎         | 6/200 [00:33<20:18,  6.28s/it]GQA online oracle evaluation:   4%|▎         | 7/200 [00:39<19:06,  5.94s/it]GQA online oracle evaluation:   4%|▍         | 8/200 [00:43<17:22,  5.43s/it]GQA online oracle evaluation:   4%|▍         | 9/200 [00:51<20:12,  6.35s/it]GQA online oracle evaluation:   5%|▌         | 10/200 [00:58<20:38,  6.52s/it]GQA online oracle evaluation:   6%|▌         | 11/200 [01:02<18:08,  5.76s/it]GQA online oracle evaluation:   6%|▌         | 12/200 [01:07<16:54,  5.40s/it]GQA online oracle evaluation:   6%|▋         | 13/200 [01:13<17:12,  5.52s/it]GQA online oracle evaluation:   7%|▋         | 14/200 [01:17<16:19,  5.27s/it]GQA online oracle evaluation:   8%|▊         | 15/200 [01:22<15:13,  4.94s/it]GQA online oracle evaluation:   8%|▊         | 16/200 [01:26<14:27,  4.71s/it]GQA online oracle evaluation:   8%|▊         | 17/200 [01:30<13:57,  4.57s/it]GQA online oracle evaluation:   9%|▉         | 18/200 [01:35<14:27,  4.77s/it]GQA online oracle evaluation:  10%|▉         | 19/200 [01:41<15:20,  5.08s/it]GQA online oracle evaluation:  10%|█         | 20/200 [01:47<15:47,  5.26s/it]GQA online oracle evaluation:  10%|█         | 21/200 [01:52<16:01,  5.37s/it]GQA online oracle evaluation:  11%|█         | 22/200 [01:57<14:56,  5.03s/it]GQA online oracle evaluation:  12%|█▏        | 23/200 [02:02<15:02,  5.10s/it]GQA online oracle evaluation:  12%|█▏        | 24/200 [02:04<12:44,  4.35s/it]GQA online oracle evaluation:  12%|█▎        | 25/200 [02:09<12:26,  4.27s/it]GQA online oracle evaluation:  13%|█▎        | 26/200 [02:22<20:17,  7.00s/it]GQA online oracle evaluation:  14%|█▎        | 27/200 [02:27<18:55,  6.57s/it]GQA online oracle evaluation:  14%|█▍        | 28/200 [02:32<16:49,  5.87s/it]GQA online oracle evaluation:  14%|█▍        | 29/200 [02:36<15:00,  5.27s/it]GQA online oracle evaluation:  15%|█▌        | 30/200 [02:40<13:49,  4.88s/it]GQA online oracle evaluation:  16%|█▌        | 31/200 [02:45<14:17,  5.07s/it]GQA online oracle evaluation:  16%|█▌        | 32/200 [02:52<16:03,  5.74s/it]GQA online oracle evaluation:  16%|█▋        | 33/200 [02:59<16:20,  5.87s/it]GQA online oracle evaluation:  17%|█▋        | 34/200 [03:04<16:01,  5.79s/it]GQA online oracle evaluation:  18%|█▊        | 35/200 [03:11<16:52,  6.14s/it]GQA online oracle evaluation:  18%|█▊        | 36/200 [03:17<16:38,  6.09s/it]GQA online oracle evaluation:  18%|█▊        | 37/200 [03:24<17:34,  6.47s/it]GQA online oracle evaluation:  19%|█▉        | 38/200 [03:32<18:06,  6.71s/it]GQA online oracle evaluation:  20%|█▉        | 39/200 [03:37<16:44,  6.24s/it]GQA online oracle evaluation:  20%|██        | 40/200 [03:43<16:25,  6.16s/it]GQA online oracle evaluation:  20%|██        | 41/200 [03:46<13:46,  5.20s/it]GQA online oracle evaluation:  21%|██        | 42/200 [03:53<15:21,  5.83s/it]GQA online oracle evaluation:  22%|██▏       | 43/200 [03:57<13:48,  5.28s/it]GQA online oracle evaluation:  22%|██▏       | 44/200 [04:04<15:21,  5.91s/it]GQA online oracle evaluation:  22%|██▎       | 45/200 [04:11<15:33,  6.02s/it]GQA online oracle evaluation:  23%|██▎       | 46/200 [04:15<14:03,  5.48s/it]GQA online oracle evaluation:  24%|██▎       | 47/200 [04:22<15:21,  6.02s/it]GQA online oracle evaluation:  24%|██▍       | 48/200 [04:29<15:57,  6.30s/it]GQA online oracle evaluation:  24%|██▍       | 49/200 [04:33<14:05,  5.60s/it]GQA online oracle evaluation:  25%|██▌       | 50/200 [04:38<13:09,  5.27s/it]GQA online oracle evaluation:  26%|██▌       | 51/200 [04:44<13:37,  5.48s/it]GQA online oracle evaluation:  26%|██▌       | 52/200 [04:48<12:28,  5.06s/it]GQA online oracle evaluation:  26%|██▋       | 53/200 [04:55<13:59,  5.71s/it]GQA online oracle evaluation:  27%|██▋       | 54/200 [05:03<15:18,  6.29s/it]GQA online oracle evaluation:  28%|██▊       | 55/200 [05:07<13:38,  5.64s/it]GQA online oracle evaluation:  28%|██▊       | 56/200 [05:12<13:35,  5.67s/it]GQA online oracle evaluation:  28%|██▊       | 57/200 [05:16<11:41,  4.91s/it]GQA online oracle evaluation:  29%|██▉       | 58/200 [05:20<10:59,  4.65s/it]GQA online oracle evaluation:  30%|██▉       | 59/200 [05:27<12:54,  5.49s/it]GQA online oracle evaluation:  30%|███       | 60/200 [05:32<12:41,  5.44s/it]GQA online oracle evaluation:  30%|███       | 61/200 [05:39<13:41,  5.91s/it]GQA online oracle evaluation:  31%|███       | 62/200 [05:44<13:02,  5.67s/it]GQA online oracle evaluation:  32%|███▏      | 63/200 [05:48<11:45,  5.15s/it]GQA online oracle evaluation:  32%|███▏      | 64/200 [05:56<12:59,  5.73s/it]GQA online oracle evaluation:  32%|███▎      | 65/200 [06:09<18:03,  8.03s/it]GQA online oracle evaluation:  33%|███▎      | 66/200 [06:13<15:17,  6.85s/it]GQA online oracle evaluation:  34%|███▎      | 67/200 [06:17<13:32,  6.11s/it]GQA online oracle evaluation:  34%|███▍      | 68/200 [06:22<12:10,  5.53s/it]GQA online oracle evaluation:  34%|███▍      | 69/200 [06:29<13:27,  6.16s/it]GQA online oracle evaluation:  35%|███▌      | 70/200 [06:35<13:03,  6.03s/it]GQA online oracle evaluation:  36%|███▌      | 71/200 [06:42<13:46,  6.41s/it]GQA online oracle evaluation:  36%|███▌      | 72/200 [06:46<12:13,  5.73s/it]GQA online oracle evaluation:  36%|███▋      | 73/200 [06:52<11:46,  5.57s/it]GQA online oracle evaluation:  37%|███▋      | 74/200 [06:57<11:38,  5.55s/it]GQA online oracle evaluation:  38%|███▊      | 75/200 [07:01<10:39,  5.12s/it]GQA online oracle evaluation:  38%|███▊      | 76/200 [07:06<10:39,  5.16s/it]GQA online oracle evaluation:  38%|███▊      | 77/200 [07:11<09:54,  4.84s/it]GQA online oracle evaluation:  39%|███▉      | 78/200 [07:18<11:12,  5.51s/it]GQA online oracle evaluation:  40%|███▉      | 79/200 [07:21<09:39,  4.79s/it]GQA online oracle evaluation:  40%|████      | 80/200 [07:26<09:51,  4.93s/it]GQA online oracle evaluation:  40%|████      | 81/200 [07:30<09:08,  4.61s/it]GQA online oracle evaluation:  41%|████      | 82/200 [07:37<10:28,  5.32s/it]GQA online oracle evaluation:  42%|████▏     | 83/200 [07:44<11:29,  5.89s/it]GQA online oracle evaluation:  42%|████▏     | 84/200 [07:48<10:32,  5.45s/it]GQA online oracle evaluation:  42%|████▎     | 85/200 [07:56<11:45,  6.14s/it]GQA online oracle evaluation:  43%|████▎     | 86/200 [08:02<11:34,  6.09s/it]GQA online oracle evaluation:  44%|████▎     | 87/200 [08:06<10:22,  5.51s/it]GQA online oracle evaluation:  44%|████▍     | 88/200 [08:13<11:00,  5.89s/it]GQA online oracle evaluation:  44%|████▍     | 89/200 [08:20<11:31,  6.23s/it]GQA online oracle evaluation:  45%|████▌     | 90/200 [08:26<10:58,  5.99s/it]GQA online oracle evaluation:  46%|████▌     | 91/200 [08:29<09:45,  5.37s/it]GQA online oracle evaluation:  46%|████▌     | 92/200 [08:34<09:00,  5.01s/it]GQA online oracle evaluation:  46%|████▋     | 93/200 [08:38<08:50,  4.96s/it]GQA online oracle evaluation:  47%|████▋     | 94/200 [08:46<09:58,  5.65s/it]GQA online oracle evaluation:  48%|████▊     | 95/200 [08:55<11:52,  6.79s/it]GQA online oracle evaluation:  48%|████▊     | 96/200 [08:59<10:17,  5.94s/it]GQA online oracle evaluation:  48%|████▊     | 97/200 [09:08<11:41,  6.81s/it]GQA online oracle evaluation:  49%|████▉     | 98/200 [09:13<10:38,  6.26s/it]GQA online oracle evaluation:  50%|████▉     | 99/200 [09:19<10:20,  6.14s/it]GQA online oracle evaluation:  50%|█████     | 100/200 [09:27<11:19,  6.80s/it]GQA online oracle evaluation:  50%|█████     | 101/200 [09:36<12:10,  7.38s/it]GQA online oracle evaluation:  51%|█████     | 102/200 [09:45<12:49,  7.85s/it]GQA online oracle evaluation:  52%|█████▏    | 103/200 [09:51<11:50,  7.33s/it]GQA online oracle evaluation:  52%|█████▏    | 104/200 [09:58<11:38,  7.27s/it]GQA online oracle evaluation:  52%|█████▎    | 105/200 [10:07<12:13,  7.72s/it]GQA online oracle evaluation:  53%|█████▎    | 106/200 [10:16<12:51,  8.21s/it]GQA online oracle evaluation:  54%|█████▎    | 107/200 [10:23<12:15,  7.91s/it]GQA online oracle evaluation:  54%|█████▍    | 108/200 [10:31<11:45,  7.67s/it]GQA online oracle evaluation:  55%|█████▍    | 109/200 [10:36<10:42,  7.06s/it]GQA online oracle evaluation:  55%|█████▌    | 110/200 [10:42<09:53,  6.60s/it]GQA online oracle evaluation:  56%|█████▌    | 111/200 [10:47<09:17,  6.26s/it]GQA online oracle evaluation:  56%|█████▌    | 112/200 [10:51<08:14,  5.62s/it]GQA online oracle evaluation:  56%|█████▋    | 113/200 [10:58<08:50,  6.10s/it]GQA online oracle evaluation:  57%|█████▋    | 114/200 [11:04<08:29,  5.92s/it]GQA online oracle evaluation:  57%|█████▊    | 115/200 [11:11<08:55,  6.29s/it]GQA online oracle evaluation:  58%|█████▊    | 116/200 [11:17<08:45,  6.26s/it]GQA online oracle evaluation:  58%|█████▊    | 117/200 [11:20<07:16,  5.26s/it]GQA online oracle evaluation:  59%|█████▉    | 118/200 [11:26<07:13,  5.29s/it]GQA online oracle evaluation:  60%|█████▉    | 119/200 [11:31<07:06,  5.27s/it]GQA online oracle evaluation:  60%|██████    | 120/200 [11:37<07:11,  5.40s/it]GQA online oracle evaluation:  60%|██████    | 121/200 [11:41<06:54,  5.25s/it]GQA online oracle evaluation:  61%|██████    | 122/200 [11:46<06:43,  5.18s/it]GQA online oracle evaluation:  62%|██████▏   | 123/200 [11:56<08:13,  6.41s/it]GQA online oracle evaluation:  62%|██████▏   | 124/200 [12:00<07:13,  5.71s/it]GQA online oracle evaluation:  62%|██████▎   | 125/200 [12:04<06:29,  5.19s/it]GQA online oracle evaluation:  63%|██████▎   | 126/200 [12:11<07:04,  5.74s/it]GQA online oracle evaluation:  64%|██████▎   | 127/200 [12:14<05:58,  4.91s/it]GQA online oracle evaluation:  64%|██████▍   | 128/200 [12:21<06:37,  5.53s/it]GQA online oracle evaluation:  64%|██████▍   | 129/200 [12:25<06:05,  5.15s/it]GQA online oracle evaluation:  65%|██████▌   | 130/200 [12:29<05:33,  4.76s/it]GQA online oracle evaluation:  66%|██████▌   | 131/200 [12:36<06:26,  5.61s/it]GQA online oracle evaluation:  66%|██████▌   | 132/200 [12:40<05:48,  5.13s/it]GQA online oracle evaluation:  66%|██████▋   | 133/200 [12:45<05:27,  4.89s/it]GQA online oracle evaluation:  67%|██████▋   | 134/200 [12:47<04:37,  4.21s/it]GQA online oracle evaluation:  68%|██████▊   | 135/200 [12:55<05:33,  5.12s/it]GQA online oracle evaluation:  68%|██████▊   | 136/200 [13:00<05:22,  5.04s/it]GQA online oracle evaluation:  68%|██████▊   | 137/200 [13:04<05:00,  4.76s/it]GQA online oracle evaluation:  69%|██████▉   | 138/200 [13:08<04:41,  4.54s/it]GQA online oracle evaluation:  70%|██████▉   | 139/200 [13:15<05:29,  5.40s/it]GQA online oracle evaluation:  70%|███████   | 140/200 [13:19<05:01,  5.03s/it]GQA online oracle evaluation:  70%|███████   | 141/200 [13:22<04:15,  4.34s/it]GQA online oracle evaluation:  71%|███████   | 142/200 [13:29<05:00,  5.18s/it]GQA online oracle evaluation:  72%|███████▏  | 143/200 [13:34<04:58,  5.23s/it]GQA online oracle evaluation:  72%|███████▏  | 144/200 [13:38<04:29,  4.81s/it]GQA online oracle evaluation:  72%|███████▎  | 145/200 [13:46<05:06,  5.57s/it]GQA online oracle evaluation:  73%|███████▎  | 146/200 [13:53<05:25,  6.02s/it]GQA online oracle evaluation:  74%|███████▎  | 147/200 [13:57<04:45,  5.38s/it]GQA online oracle evaluation:  74%|███████▍  | 148/200 [14:02<04:44,  5.46s/it]GQA online oracle evaluation:  74%|███████▍  | 149/200 [14:11<05:31,  6.50s/it]GQA online oracle evaluation:  75%|███████▌  | 150/200 [14:18<05:30,  6.60s/it]GQA online oracle evaluation:  76%|███████▌  | 151/200 [14:22<04:45,  5.82s/it]GQA online oracle evaluation:  76%|███████▌  | 152/200 [14:27<04:31,  5.66s/it]GQA online oracle evaluation:  76%|███████▋  | 153/200 [14:33<04:26,  5.67s/it]GQA online oracle evaluation:  77%|███████▋  | 154/200 [14:37<03:56,  5.15s/it]GQA online oracle evaluation:  78%|███████▊  | 155/200 [14:41<03:40,  4.90s/it]GQA online oracle evaluation:  78%|███████▊  | 156/200 [14:45<03:26,  4.70s/it]GQA online oracle evaluation:  78%|███████▊  | 157/200 [14:50<03:15,  4.55s/it]GQA online oracle evaluation:  79%|███████▉  | 158/200 [14:55<03:20,  4.78s/it]GQA online oracle evaluation:  80%|███████▉  | 159/200 [15:00<03:24,  5.00s/it]GQA online oracle evaluation:  80%|████████  | 160/200 [15:07<03:41,  5.55s/it]GQA online oracle evaluation:  80%|████████  | 161/200 [15:10<03:05,  4.76s/it]GQA online oracle evaluation:  81%|████████  | 162/200 [15:15<03:02,  4.81s/it]GQA online oracle evaluation:  82%|████████▏ | 163/200 [15:21<03:10,  5.14s/it]GQA online oracle evaluation:  82%|████████▏ | 164/200 [15:26<03:03,  5.11s/it]GQA online oracle evaluation:  82%|████████▎ | 165/200 [15:30<02:48,  4.82s/it]GQA online oracle evaluation:  83%|████████▎ | 166/200 [15:34<02:36,  4.59s/it]GQA online oracle evaluation:  84%|████████▎ | 167/200 [15:39<02:27,  4.48s/it]GQA online oracle evaluation:  84%|████████▍ | 168/200 [15:43<02:19,  4.36s/it]GQA online oracle evaluation:  84%|████████▍ | 169/200 [15:47<02:17,  4.42s/it]GQA online oracle evaluation:  85%|████████▌ | 170/200 [15:51<02:09,  4.32s/it]GQA online oracle evaluation:  86%|████████▌ | 171/200 [15:55<02:03,  4.24s/it]GQA online oracle evaluation:  86%|████████▌ | 172/200 [16:03<02:23,  5.13s/it]GQA online oracle evaluation:  86%|████████▋ | 173/200 [16:10<02:34,  5.74s/it]GQA online oracle evaluation:  87%|████████▋ | 174/200 [16:17<02:38,  6.11s/it]GQA online oracle evaluation:  88%|████████▊ | 175/200 [16:24<02:40,  6.42s/it]GQA online oracle evaluation:  88%|████████▊ | 176/200 [16:39<03:35,  8.99s/it]GQA online oracle evaluation:  88%|████████▊ | 177/200 [16:46<03:13,  8.43s/it]GQA online oracle evaluation:  89%|████████▉ | 178/200 [16:51<02:41,  7.36s/it]GQA online oracle evaluation:  90%|████████▉ | 179/200 [16:55<02:14,  6.43s/it]GQA online oracle evaluation:  90%|█████████ | 180/200 [17:03<02:18,  6.92s/it]GQA online oracle evaluation:  90%|█████████ | 181/200 [17:11<02:14,  7.08s/it]GQA online oracle evaluation:  91%|█████████ | 182/200 [17:15<01:55,  6.44s/it]GQA online oracle evaluation:  92%|█████████▏| 183/200 [17:22<01:52,  6.60s/it]GQA online oracle evaluation:  92%|█████████▏| 184/200 [17:28<01:41,  6.32s/it]GQA online oracle evaluation:  92%|█████████▎| 185/200 [17:32<01:25,  5.67s/it]GQA online oracle evaluation:  93%|█████████▎| 186/200 [17:40<01:26,  6.19s/it]GQA online oracle evaluation:  94%|█████████▎| 187/200 [17:47<01:23,  6.44s/it]GQA online oracle evaluation:  94%|█████████▍| 188/200 [17:51<01:08,  5.72s/it]GQA online oracle evaluation:  94%|█████████▍| 189/200 [17:56<01:01,  5.58s/it]GQA online oracle evaluation:  95%|█████████▌| 190/200 [18:00<00:51,  5.16s/it]GQA online oracle evaluation:  96%|█████████▌| 191/200 [18:06<00:47,  5.27s/it]GQA online oracle evaluation:  96%|█████████▌| 192/200 [18:13<00:46,  5.85s/it]GQA online oracle evaluation:  96%|█████████▋| 193/200 [18:19<00:40,  5.78s/it]GQA online oracle evaluation:  97%|█████████▋| 194/200 [18:24<00:34,  5.82s/it]GQA online oracle evaluation:  98%|█████████▊| 195/200 [18:28<00:26,  5.25s/it]GQA online oracle evaluation:  98%|█████████▊| 196/200 [18:32<00:19,  4.91s/it]GQA online oracle evaluation:  98%|█████████▊| 197/200 [18:40<00:16,  5.58s/it]GQA online oracle evaluation:  99%|█████████▉| 198/200 [18:45<00:10,  5.38s/it]GQA online oracle evaluation: 100%|█████████▉| 199/200 [18:50<00:05,  5.34s/it]GQA online oracle evaluation: 100%|██████████| 200/200 [18:59<00:00,  6.47s/it]GQA online oracle evaluation: 100%|██████████| 200/200 [18:59<00:00,  5.70s/it]

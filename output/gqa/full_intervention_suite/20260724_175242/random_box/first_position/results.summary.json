@@ -1,0 +1,122 @@
+{
+  "shard_paths": [
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/first_position/shards/shard_000/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/first_position/shards/shard_001/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/first_position/shards/shard_002/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/first_position/shards/shard_003/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/first_position/shards/shard_004/results.jsonl"
+  ],
+  "total_records": 1000,
+  "successful_records": 1000,
+  "errors": 0,
+  "all_samples": {
+    "samples": 999,
+    "baseline_accuracy": 0.7397397397397397,
+    "baseline_accuracy_count": 999,
+    "counterfactual_accuracy": 0.6106106106106106,
+    "counterfactual_accuracy_count": 999,
+    "counterfactual_minus_baseline": -0.1291291291291291,
+    "answer_changed_count": 254,
+    "correctness_transitions": {
+      "correct_to_wrong": 168,
+      "wrong_to_correct": 39,
+      "correct_to_correct": 571,
+      "wrong_to_wrong": 221
+    }
+  },
+  "by_structural_type": {
+    "choose": {
+      "samples": 145,
+      "baseline_accuracy": 0.8620689655172413,
+      "baseline_accuracy_count": 145,
+      "counterfactual_accuracy": 0.6482758620689655,
+      "counterfactual_accuracy_count": 145,
+      "counterfactual_minus_baseline": -0.21379310344827585,
+      "answer_changed_count": 49,
+      "correctness_transitions": {
+        "correct_to_wrong": 40,
+        "wrong_to_correct": 9,
+        "correct_to_correct": 85,
+        "wrong_to_wrong": 11
+      }
+    },
+    "compare": {
+      "samples": 34,
+      "baseline_accuracy": 0.6176470588235294,
+      "baseline_accuracy_count": 34,
+      "counterfactual_accuracy": 0.5882352941176471,
+      "counterfactual_accuracy_count": 34,
+      "counterfactual_minus_baseline": -0.02941176470588236,
+      "answer_changed_count": 5,
+      "correctness_transitions": {
+        "correct_to_wrong": 3,
+        "wrong_to_correct": 2,
+        "correct_to_correct": 18,
+        "wrong_to_wrong": 11
+      }
+    },
+    "logical": {
+      "samples": 120,
+      "baseline_accuracy": 0.8916666666666667,
+      "baseline_accuracy_count": 120,
+      "counterfactual_accuracy": 0.9083333333333333,
+      "counterfactual_accuracy_count": 120,
+      "counterfactual_minus_baseline": 0.016666666666666607,
+      "answer_changed_count": 5,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 3,
+        "correct_to_correct": 106,
+        "wrong_to_wrong": 10
+      }
+    },
+    "query": {
+      "samples": 463,
+      "baseline_accuracy": 0.6047516198704104,
+      "baseline_accuracy_count": 463,
+      "counterfactual_accuracy": 0.4449244060475162,
+      "counterfactual_accuracy_count": 463,
+      "counterfactual_minus_baseline": -0.15982721382289417,
+      "answer_changed_count": 162,
+      "correctness_transitions": {
+        "correct_to_wrong": 95,
+        "wrong_to_correct": 21,
+        "correct_to_correct": 185,
+        "wrong_to_wrong": 162
+      }
+    },
+    "verify": {
+      "samples": 237,
+      "baseline_accuracy": 0.869198312236287,
+      "baseline_accuracy_count": 237,
+      "counterfactual_accuracy": 0.7637130801687764,
+      "counterfactual_accuracy_count": 237,
+      "counterfactual_minus_baseline": -0.10548523206751059,
+      "answer_changed_count": 33,
+      "correctness_transitions": {
+        "correct_to_wrong": 29,
+        "wrong_to_correct": 4,
+        "correct_to_correct": 177,
+        "wrong_to_wrong": 27
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "sharded": true,
+    "perturb_mode": "random_box",
+    "perturb_position": "first",
+    "perturb_index": null,
+    "selection_seed": 2026,
+    "perturb_seed": 2027,
+    "iou_range": [
+      0.0,
+      0.1
+    ],
+    "perturb_box_mode": "random",
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0
+  },
+  "no_coordinate": 1
+}

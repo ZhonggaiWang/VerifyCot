@@ -427,8 +427,9 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
             print('fail to detect correct box from {}'.format(current_box_text))
             raise ValueError
         current_box = torch.tensor(current_box_values, dtype=self.dtype, device=self.cache_images.device)
-        if self.last_bound_boxes is not None:
-            self.last_bound_boxes.append(tuple(float(value) for value in current_box_values))
+        bound_boxes = getattr(self, 'last_bound_boxes', None)
+        if bound_boxes is not None:
+            bound_boxes.append(tuple(float(value) for value in current_box_values))
         box_feat = self.box_align(self.cache_images[0], current_box.unsqueeze(0))[0]
         init_inputs_embeds = self.get_input_embeddings()(model_inputs['input_ids'])
         next_inputs_embeds = torch.cat([init_inputs_embeds, box_feat.unsqueeze(0)], dim=1)

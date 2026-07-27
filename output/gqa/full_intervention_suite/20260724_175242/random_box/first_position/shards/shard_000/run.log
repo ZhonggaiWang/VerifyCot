@@ -1,0 +1,129 @@
+GQA manifest samples: 1000; evaluating: 200; resumed: 0
+Create VIT
+End Create VIT
+Create Front Projector
+End Create Front Projector
+{
+  "total_records": 200,
+  "successful_records": 200,
+  "errors": 0,
+  "no_coordinate": 1,
+  "all_samples": {
+    "samples": 199,
+    "baseline_accuracy": 0.7386934673366834,
+    "baseline_accuracy_count": 199,
+    "counterfactual_accuracy": 0.5778894472361809,
+    "counterfactual_accuracy_count": 199,
+    "counterfactual_minus_baseline": -0.16080402010050254,
+    "answer_changed_count": 64,
+    "correctness_transitions": {
+      "correct_to_wrong": 42,
+      "wrong_to_correct": 10,
+      "correct_to_correct": 105,
+      "wrong_to_wrong": 42
+    }
+  },
+  "by_structural_type": {
+    "choose": {
+      "samples": 26,
+      "baseline_accuracy": 0.9230769230769231,
+      "baseline_accuracy_count": 26,
+      "counterfactual_accuracy": 0.6538461538461539,
+      "counterfactual_accuracy_count": 26,
+      "counterfactual_minus_baseline": -0.2692307692307693,
+      "answer_changed_count": 9,
+      "correctness_transitions": {
+        "correct_to_wrong": 8,
+        "wrong_to_correct": 1,
+        "correct_to_correct": 16,
+        "wrong_to_wrong": 1
+      }
+    },
+    "compare": {
+      "samples": 6,
+      "baseline_accuracy": 0.3333333333333333,
+      "baseline_accuracy_count": 6,
+      "counterfactual_accuracy": 0.5,
+      "counterfactual_accuracy_count": 6,
+      "counterfactual_minus_baseline": 0.16666666666666669,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 1,
+        "correct_to_correct": 2,
+        "wrong_to_wrong": 3
+      }
+    },
+    "logical": {
+      "samples": 23,
+      "baseline_accuracy": 0.9565217391304348,
+      "baseline_accuracy_count": 23,
+      "counterfactual_accuracy": 0.9565217391304348,
+      "counterfactual_accuracy_count": 23,
+      "counterfactual_minus_baseline": 0.0,
+      "answer_changed_count": 2,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 1,
+        "correct_to_correct": 21,
+        "wrong_to_wrong": 0
+      }
+    },
+    "query": {
+      "samples": 96,
+      "baseline_accuracy": 0.625,
+      "baseline_accuracy_count": 96,
+      "counterfactual_accuracy": 0.4166666666666667,
+      "counterfactual_accuracy_count": 96,
+      "counterfactual_minus_baseline": -0.20833333333333331,
+      "answer_changed_count": 42,
+      "correctness_transitions": {
+        "correct_to_wrong": 25,
+        "wrong_to_correct": 5,
+        "correct_to_correct": 35,
+        "wrong_to_wrong": 31
+      }
+    },
+    "verify": {
+      "samples": 48,
+      "baseline_accuracy": 0.8125,
+      "baseline_accuracy_count": 48,
+      "counterfactual_accuracy": 0.6875,
+      "counterfactual_accuracy_count": 48,
+      "counterfactual_minus_baseline": -0.125,
+      "answer_changed_count": 10,
+      "correctness_transitions": {
+        "correct_to_wrong": 8,
+        "wrong_to_correct": 2,
+        "correct_to_correct": 31,
+        "wrong_to_wrong": 7
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0,
+    "perturb_mode": "random_box",
+    "perturb_position": "first",
+    "perturb_index": null,
+    "selection_seed": 2026,
+    "perturb_seed": 2027,
+    "iou_range": [
+      0.0,
+      0.1
+    ],
+    "perturb_box_mode": "random"
+  }
+}
+Per-example results: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/first_position/shards/shard_000/results.jsonl
+Summary: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/full_intervention_suite/20260724_175242/random_box/first_position/shards/shard_000/results.summary.json
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+You are using a model of type EditGPTMistral to instantiate a model of type VolCanoMistral. This is not supported for all configurations of models and can yield errors.
+/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:02<00:07,  2.44s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:04<00:04,  2.40s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:07<00:02,  2.71s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:08<00:00,  2.03s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:08<00:00,  2.22s/it]
+GQA counterfactual evaluation:   0%|          | 0/200 [00:00<?, ?it/s]/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/transformers/generation/configuration_utils.py:392: UserWarning: `do_sample` is set to `False`. However, `temperature` is set to `0.0` -- this flag is only used in sample-based generation modes. You should set `do_sample=True` or unset `temperature`.
+  warnings.warn(
+GQA counterfactual evaluation:   0%|          | 1/200 [00:08<29:26,  8.88s/it]GQA counterfactual evaluation:   1%|          | 2/200 [00:14<22:45,  6.90s/it]GQA counterfactual evaluation:   2%|▏         | 3/200 [00:21<22:17,  6.79s/it]GQA counterfactual evaluation:   2%|▏         | 4/200 [00:28<23:22,  7.16s/it]GQA counterfactual evaluation:   2%|▎         | 5/200 [00:33<20:11,  6.21s/it]GQA counterfactual evaluation:   3%|▎         | 6/200 [00:37<17:35,  5.44s/it]GQA counterfactual evaluation:   4%|▎         | 7/200 [00:40<14:47,  4.60s/it]GQA counterfactual evaluation:   4%|▍         | 8/200 [00:45<15:20,  4.79s/it]GQA counterfactual evaluation:   4%|▍         | 9/200 [00:52<17:18,  5.44s/it]GQA counterfactual evaluation:   5%|▌         | 10/200 [00:55<14:41,  4.64s/it]GQA counterfactual evaluation:   6%|▌         | 11/200 [01:00<15:11,  4.82s/it]GQA counterfactual evaluation:   6%|▌         | 12/200 [01:08<18:35,  5.93s/it]GQA counterfactual evaluation:   6%|▋         | 13/200 [01:12<16:28,  5.29s/it]GQA counterfactual evaluation:   7%|▋         | 14/200 [01:18<16:52,  5.44s/it]GQA counterfactual evaluation:   8%|▊         | 15/200 [01:26<19:32,  6.34s/it]GQA counterfactual evaluation:   8%|▊         | 16/200 [01:30<17:26,  5.69s/it]GQA counterfactual evaluation:   8%|▊         | 17/200 [01:34<15:29,  5.08s/it]GQA counterfactual evaluation:   9%|▉         | 18/200 [01:41<16:58,  5.59s/it]GQA counterfactual evaluation:  10%|▉         | 19/200 [01:45<15:24,  5.11s/it]GQA counterfactual evaluation:  10%|█         | 20/200 [01:49<14:05,  4.70s/it]GQA counterfactual evaluation:  10%|█         | 21/200 [01:56<16:46,  5.62s/it]GQA counterfactual evaluation:  11%|█         | 22/200 [02:00<14:54,  5.03s/it]GQA counterfactual evaluation:  12%|█▏        | 23/200 [02:04<14:07,  4.79s/it]GQA counterfactual evaluation:  12%|█▏        | 24/200 [02:11<15:47,  5.38s/it]GQA counterfactual evaluation:  12%|█▎        | 25/200 [02:19<18:10,  6.23s/it]GQA counterfactual evaluation:  13%|█▎        | 26/200 [02:26<18:35,  6.41s/it]GQA counterfactual evaluation:  14%|█▎        | 27/200 [02:32<17:53,  6.21s/it]GQA counterfactual evaluation:  14%|█▍        | 28/200 [02:36<15:52,  5.54s/it]GQA counterfactual evaluation:  14%|█▍        | 29/200 [02:41<15:40,  5.50s/it]GQA counterfactual evaluation:  15%|█▌        | 30/200 [02:48<16:38,  5.87s/it]GQA counterfactual evaluation:  16%|█▌        | 31/200 [02:52<14:56,  5.31s/it]GQA counterfactual evaluation:  16%|█▌        | 32/200 [02:59<16:45,  5.98s/it]GQA counterfactual evaluation:  16%|█▋        | 33/200 [03:08<18:36,  6.69s/it]GQA counterfactual evaluation:  17%|█▋        | 34/200 [03:12<16:39,  6.02s/it]GQA counterfactual evaluation:  18%|█▊        | 35/200 [03:21<18:24,  6.69s/it]GQA counterfactual evaluation:  18%|█▊        | 36/200 [03:27<18:20,  6.71s/it]GQA counterfactual evaluation:  18%|█▊        | 37/200 [03:32<16:57,  6.24s/it]GQA counterfactual evaluation:  19%|█▉        | 38/200 [03:39<17:20,  6.42s/it]GQA counterfactual evaluation:  20%|█▉        | 39/200 [03:43<15:10,  5.66s/it]GQA counterfactual evaluation:  20%|██        | 40/200 [03:49<14:58,  5.61s/it]GQA counterfactual evaluation:  20%|██        | 41/200 [03:56<15:58,  6.03s/it]GQA counterfactual evaluation:  21%|██        | 42/200 [04:01<15:09,  5.75s/it]GQA counterfactual evaluation:  22%|██▏       | 43/200 [04:05<13:52,  5.30s/it]GQA counterfactual evaluation:  22%|██▏       | 44/200 [04:09<12:43,  4.90s/it]GQA counterfactual evaluation:  22%|██▎       | 45/200 [04:16<14:03,  5.44s/it]GQA counterfactual evaluation:  23%|██▎       | 46/200 [04:25<17:09,  6.68s/it]GQA counterfactual evaluation:  24%|██▎       | 47/200 [04:32<17:23,  6.82s/it]GQA counterfactual evaluation:  24%|██▍       | 48/200 [04:39<17:20,  6.84s/it]GQA counterfactual evaluation:  24%|██▍       | 49/200 [04:47<17:43,  7.05s/it]GQA counterfactual evaluation:  25%|██▌       | 50/200 [04:51<15:13,  6.09s/it]GQA counterfactual evaluation:  26%|██▌       | 51/200 [04:56<14:21,  5.78s/it]GQA counterfactual evaluation:  26%|██▌       | 52/200 [05:02<14:57,  6.07s/it]GQA counterfactual evaluation:  26%|██▋       | 53/200 [05:06<13:19,  5.44s/it]GQA counterfactual evaluation:  27%|██▋       | 54/200 [05:12<13:08,  5.40s/it]GQA counterfactual evaluation:  28%|██▊       | 55/200 [05:16<12:04,  4.99s/it]GQA counterfactual evaluation:  28%|██▊       | 56/200 [05:20<11:16,  4.70s/it]GQA counterfactual evaluation:  28%|██▊       | 57/200 [05:20<08:18,  3.49s/it]GQA counterfactual evaluation:  29%|██▉       | 58/200 [05:25<09:19,  3.94s/it]GQA counterfactual evaluation:  30%|██▉       | 59/200 [05:30<09:24,  4.00s/it]GQA counterfactual evaluation:  30%|███       | 60/200 [05:36<10:43,  4.60s/it]GQA counterfactual evaluation:  30%|███       | 61/200 [05:41<11:16,  4.86s/it]GQA counterfactual evaluation:  31%|███       | 62/200 [05:46<11:22,  4.95s/it]GQA counterfactual evaluation:  32%|███▏      | 63/200 [05:50<10:33,  4.62s/it]GQA counterfactual evaluation:  32%|███▏      | 64/200 [05:53<09:08,  4.03s/it]GQA counterfactual evaluation:  32%|███▎      | 65/200 [06:00<10:54,  4.85s/it]GQA counterfactual evaluation:  33%|███▎      | 66/200 [06:04<10:50,  4.86s/it]GQA counterfactual evaluation:  34%|███▎      | 67/200 [06:09<10:32,  4.75s/it]GQA counterfactual evaluation:  34%|███▍      | 68/200 [06:13<10:00,  4.55s/it]GQA counterfactual evaluation:  34%|███▍      | 69/200 [06:20<11:38,  5.33s/it]GQA counterfactual evaluation:  35%|███▌      | 70/200 [06:24<10:37,  4.90s/it]GQA counterfactual evaluation:  36%|███▌      | 71/200 [06:31<11:36,  5.40s/it]GQA counterfactual evaluation:  36%|███▌      | 72/200 [06:39<13:19,  6.24s/it]GQA counterfactual evaluation:  36%|███▋      | 73/200 [06:44<12:23,  5.86s/it]GQA counterfactual evaluation:  37%|███▋      | 74/200 [06:52<13:52,  6.61s/it]GQA counterfactual evaluation:  38%|███▊      | 75/200 [06:59<14:01,  6.73s/it]GQA counterfactual evaluation:  38%|███▊      | 76/200 [07:03<12:00,  5.81s/it]GQA counterfactual evaluation:  38%|███▊      | 77/200 [07:07<10:46,  5.25s/it]GQA counterfactual evaluation:  39%|███▉      | 78/200 [07:15<12:38,  6.21s/it]GQA counterfactual evaluation:  40%|███▉      | 79/200 [07:22<12:56,  6.42s/it]GQA counterfactual evaluation:  40%|████      | 80/200 [07:26<11:24,  5.70s/it]GQA counterfactual evaluation:  40%|████      | 81/200 [07:34<12:26,  6.28s/it]GQA counterfactual evaluation:  41%|████      | 82/200 [07:40<12:16,  6.24s/it]GQA counterfactual evaluation:  42%|████▏     | 83/200 [07:44<11:11,  5.74s/it]GQA counterfactual evaluation:  42%|████▏     | 84/200 [07:49<10:19,  5.34s/it]GQA counterfactual evaluation:  42%|████▎     | 85/200 [07:55<10:57,  5.72s/it]GQA counterfactual evaluation:  43%|████▎     | 86/200 [08:01<10:30,  5.53s/it]GQA counterfactual evaluation:  44%|████▎     | 87/200 [08:07<11:08,  5.91s/it]GQA counterfactual evaluation:  44%|████▍     | 88/200 [08:13<10:53,  5.83s/it]GQA counterfactual evaluation:  44%|████▍     | 89/200 [08:17<09:47,  5.29s/it]GQA counterfactual evaluation:  45%|████▌     | 90/200 [08:29<13:09,  7.18s/it]GQA counterfactual evaluation:  46%|████▌     | 91/200 [08:33<11:17,  6.21s/it]GQA counterfactual evaluation:  46%|████▌     | 92/200 [08:39<11:28,  6.37s/it]GQA counterfactual evaluation:  46%|████▋     | 93/200 [08:43<10:02,  5.63s/it]GQA counterfactual evaluation:  47%|████▋     | 94/200 [08:50<10:31,  5.96s/it]GQA counterfactual evaluation:  48%|████▊     | 95/200 [08:57<10:50,  6.20s/it]GQA counterfactual evaluation:  48%|████▊     | 96/200 [09:03<10:40,  6.16s/it]GQA counterfactual evaluation:  48%|████▊     | 97/200 [09:09<10:21,  6.04s/it]GQA counterfactual evaluation:  49%|████▉     | 98/200 [09:18<11:58,  7.04s/it]GQA counterfactual evaluation:  50%|████▉     | 99/200 [09:25<11:38,  6.92s/it]GQA counterfactual evaluation:  50%|█████     | 100/200 [09:28<09:58,  5.98s/it]GQA counterfactual evaluation:  50%|█████     | 101/200 [09:34<09:38,  5.85s/it]GQA counterfactual evaluation:  51%|█████     | 102/200 [09:43<11:17,  6.92s/it]GQA counterfactual evaluation:  52%|█████▏    | 103/200 [09:49<10:28,  6.48s/it]GQA counterfactual evaluation:  52%|█████▏    | 104/200 [09:54<09:42,  6.06s/it]GQA counterfactual evaluation:  52%|█████▎    | 105/200 [09:59<09:07,  5.76s/it]GQA counterfactual evaluation:  53%|█████▎    | 106/200 [10:04<08:49,  5.63s/it]GQA counterfactual evaluation:  54%|█████▎    | 107/200 [10:08<07:53,  5.10s/it]GQA counterfactual evaluation:  54%|█████▍    | 108/200 [10:13<07:46,  5.07s/it]GQA counterfactual evaluation:  55%|█████▍    | 109/200 [10:18<07:37,  5.03s/it]GQA counterfactual evaluation:  55%|█████▌    | 110/200 [10:25<08:23,  5.59s/it]GQA counterfactual evaluation:  56%|█████▌    | 111/200 [10:32<09:03,  6.11s/it]GQA counterfactual evaluation:  56%|█████▌    | 112/200 [10:37<08:13,  5.60s/it]GQA counterfactual evaluation:  56%|█████▋    | 113/200 [10:41<07:45,  5.35s/it]GQA counterfactual evaluation:  57%|█████▋    | 114/200 [10:49<08:36,  6.01s/it]GQA counterfactual evaluation:  57%|█████▊    | 115/200 [10:53<07:37,  5.38s/it]GQA counterfactual evaluation:  58%|█████▊    | 116/200 [11:00<08:10,  5.84s/it]GQA counterfactual evaluation:  58%|█████▊    | 117/200 [11:05<07:38,  5.53s/it]GQA counterfactual evaluation:  59%|█████▉    | 118/200 [11:11<08:00,  5.86s/it]GQA counterfactual evaluation:  60%|█████▉    | 119/200 [11:15<07:14,  5.37s/it]GQA counterfactual evaluation:  60%|██████    | 120/200 [11:20<07:01,  5.26s/it]GQA counterfactual evaluation:  60%|██████    | 121/200 [11:26<07:01,  5.34s/it]GQA counterfactual evaluation:  61%|██████    | 122/200 [11:31<06:51,  5.27s/it]GQA counterfactual evaluation:  62%|██████▏   | 123/200 [11:36<06:36,  5.15s/it]GQA counterfactual evaluation:  62%|██████▏   | 124/200 [11:40<06:05,  4.81s/it]GQA counterfactual evaluation:  62%|██████▎   | 125/200 [11:44<05:37,  4.50s/it]GQA counterfactual evaluation:  63%|██████▎   | 126/200 [11:50<06:03,  4.92s/it]GQA counterfactual evaluation:  64%|██████▎   | 127/200 [11:58<07:06,  5.84s/it]GQA counterfactual evaluation:  64%|██████▍   | 128/200 [12:05<07:24,  6.18s/it]GQA counterfactual evaluation:  64%|██████▍   | 129/200 [12:10<06:58,  5.90s/it]GQA counterfactual evaluation:  65%|██████▌   | 130/200 [12:16<07:05,  6.07s/it]GQA counterfactual evaluation:  66%|██████▌   | 131/200 [12:24<07:21,  6.40s/it]GQA counterfactual evaluation:  66%|██████▌   | 132/200 [12:27<06:25,  5.67s/it]GQA counterfactual evaluation:  66%|██████▋   | 133/200 [12:30<05:18,  4.75s/it]GQA counterfactual evaluation:  67%|██████▋   | 134/200 [12:36<05:28,  4.97s/it]GQA counterfactual evaluation:  68%|██████▊   | 135/200 [12:43<06:10,  5.70s/it]GQA counterfactual evaluation:  68%|██████▊   | 136/200 [12:47<05:30,  5.16s/it]GQA counterfactual evaluation:  68%|██████▊   | 137/200 [12:54<06:03,  5.77s/it]GQA counterfactual evaluation:  69%|██████▉   | 138/200 [13:02<06:34,  6.37s/it]GQA counterfactual evaluation:  70%|██████▉   | 139/200 [13:07<06:08,  6.04s/it]GQA counterfactual evaluation:  70%|███████   | 140/200 [13:12<05:41,  5.70s/it]GQA counterfactual evaluation:  70%|███████   | 141/200 [13:16<05:06,  5.19s/it]GQA counterfactual evaluation:  71%|███████   | 142/200 [13:22<05:14,  5.42s/it]GQA counterfactual evaluation:  72%|███████▏  | 143/200 [13:27<05:02,  5.30s/it]GQA counterfactual evaluation:  72%|███████▏  | 144/200 [13:35<05:43,  6.13s/it]GQA counterfactual evaluation:  72%|███████▎  | 145/200 [13:40<05:21,  5.85s/it]GQA counterfactual evaluation:  73%|███████▎  | 146/200 [13:44<04:43,  5.25s/it]GQA counterfactual evaluation:  74%|███████▎  | 147/200 [13:50<04:51,  5.50s/it]GQA counterfactual evaluation:  74%|███████▍  | 148/200 [13:55<04:30,  5.19s/it]GQA counterfactual evaluation:  74%|███████▍  | 149/200 [14:01<04:36,  5.43s/it]GQA counterfactual evaluation:  75%|███████▌  | 150/200 [14:08<04:56,  5.94s/it]GQA counterfactual evaluation:  76%|███████▌  | 151/200 [14:11<04:17,  5.25s/it]GQA counterfactual evaluation:  76%|███████▌  | 152/200 [14:15<03:55,  4.90s/it]GQA counterfactual evaluation:  76%|███████▋  | 153/200 [14:25<04:50,  6.19s/it]GQA counterfactual evaluation:  77%|███████▋  | 154/200 [14:29<04:18,  5.62s/it]GQA counterfactual evaluation:  78%|███████▊  | 155/200 [14:34<04:04,  5.44s/it]GQA counterfactual evaluation:  78%|███████▊  | 156/200 [14:38<03:39,  4.99s/it]GQA counterfactual evaluation:  78%|███████▊  | 157/200 [14:45<03:59,  5.56s/it]GQA counterfactual evaluation:  79%|███████▉  | 158/200 [14:49<03:33,  5.07s/it]GQA counterfactual evaluation:  80%|███████▉  | 159/200 [14:55<03:45,  5.50s/it]GQA counterfactual evaluation:  80%|████████  | 160/200 [15:03<04:01,  6.04s/it]GQA counterfactual evaluation:  80%|████████  | 161/200 [15:08<03:47,  5.82s/it]GQA counterfactual evaluation:  81%|████████  | 162/200 [15:15<03:55,  6.19s/it]GQA counterfactual evaluation:  82%|████████▏ | 163/200 [15:20<03:35,  5.82s/it]GQA counterfactual evaluation:  82%|████████▏ | 164/200 [15:28<03:58,  6.63s/it]GQA counterfactual evaluation:  82%|████████▎ | 165/200 [15:34<03:38,  6.24s/it]GQA counterfactual evaluation:  83%|████████▎ | 166/200 [15:38<03:08,  5.54s/it]GQA counterfactual evaluation:  84%|████████▎ | 167/200 [15:43<03:00,  5.48s/it]GQA counterfactual evaluation:  84%|████████▍ | 168/200 [15:48<02:49,  5.30s/it]GQA counterfactual evaluation:  84%|████████▍ | 169/200 [15:52<02:32,  4.91s/it]GQA counterfactual evaluation:  85%|████████▌ | 170/200 [15:59<02:45,  5.53s/it]GQA counterfactual evaluation:  86%|████████▌ | 171/200 [16:05<02:48,  5.81s/it]GQA counterfactual evaluation:  86%|████████▌ | 172/200 [16:09<02:27,  5.28s/it]GQA counterfactual evaluation:  86%|████████▋ | 173/200 [16:16<02:36,  5.79s/it]GQA counterfactual evaluation:  87%|████████▋ | 174/200 [16:25<02:49,  6.53s/it]GQA counterfactual evaluation:  88%|████████▊ | 175/200 [16:31<02:45,  6.64s/it]GQA counterfactual evaluation:  88%|████████▊ | 176/200 [16:39<02:46,  6.94s/it]GQA counterfactual evaluation:  88%|████████▊ | 177/200 [16:47<02:47,  7.26s/it]GQA counterfactual evaluation:  89%|████████▉ | 178/200 [16:53<02:29,  6.78s/it]GQA counterfactual evaluation:  90%|████████▉ | 179/200 [16:59<02:17,  6.52s/it]GQA counterfactual evaluation:  90%|█████████ | 180/200 [17:03<01:56,  5.85s/it]GQA counterfactual evaluation:  90%|█████████ | 181/200 [17:07<01:40,  5.30s/it]GQA counterfactual evaluation:  91%|█████████ | 182/200 [17:11<01:27,  4.84s/it]GQA counterfactual evaluation:  92%|█████████▏| 183/200 [17:15<01:18,  4.60s/it]GQA counterfactual evaluation:  92%|█████████▏| 184/200 [17:19<01:09,  4.37s/it]GQA counterfactual evaluation:  92%|█████████▎| 185/200 [17:26<01:17,  5.15s/it]GQA counterfactual evaluation:  93%|█████████▎| 186/200 [17:29<01:06,  4.76s/it]GQA counterfactual evaluation:  94%|█████████▎| 187/200 [17:33<00:58,  4.54s/it]GQA counterfactual evaluation:  94%|█████████▍| 188/200 [17:39<00:57,  4.82s/it]GQA counterfactual evaluation:  94%|█████████▍| 189/200 [17:43<00:50,  4.58s/it]GQA counterfactual evaluation:  95%|█████████▌| 190/200 [17:50<00:53,  5.34s/it]GQA counterfactual evaluation:  96%|█████████▌| 191/200 [17:58<00:55,  6.13s/it]GQA counterfactual evaluation:  96%|█████████▌| 192/200 [18:06<00:53,  6.68s/it]GQA counterfactual evaluation:  96%|█████████▋| 193/200 [18:14<00:50,  7.20s/it]GQA counterfactual evaluation:  97%|█████████▋| 194/200 [18:18<00:37,  6.20s/it]GQA counterfactual evaluation:  98%|█████████▊| 195/200 [18:22<00:26,  5.32s/it]GQA counterfactual evaluation:  98%|█████████▊| 196/200 [18:30<00:24,  6.19s/it]GQA counterfactual evaluation:  98%|█████████▊| 197/200 [18:36<00:18,  6.30s/it]GQA counterfactual evaluation:  99%|█████████▉| 198/200 [18:40<00:11,  5.60s/it]GQA counterfactual evaluation: 100%|█████████▉| 199/200 [18:45<00:05,  5.25s/it]GQA counterfactual evaluation: 100%|██████████| 200/200 [18:49<00:00,  4.84s/it]GQA counterfactual evaluation: 100%|██████████| 200/200 [18:49<00:00,  5.65s/it]

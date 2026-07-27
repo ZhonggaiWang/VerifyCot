@@ -1,0 +1,19 @@
+{
+  "manifest_path": "output/vstar/annotations/full_238_manifest.jsonl",
+  "vstar_root": "/data/zhonggai/VStar",
+  "main_questions_path": "/data/zhonggai/VStar/test_questions.jsonl",
+  "total_records": 238,
+  "category_counts": {
+    "GPT4V-hard": 17,
+    "OCR": 30,
+    "direct_attributes": 115,
+    "relative_position": 76
+  },
+  "subset_counts": {
+    "GPT4V-hard": 17,
+    "OCR": 30,
+    "main": 191
+  },
+  "label_convention": "all rows are canonical option index 0 / letter A",
+  "main_source_label_note": "source_jsonl_label preserves the shuffled multiple-choice label in the official 191-row JSONL; label is canonicalized to A to match the paired annotation option order."
+}

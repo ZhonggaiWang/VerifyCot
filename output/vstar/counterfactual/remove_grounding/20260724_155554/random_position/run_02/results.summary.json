@@ -1,0 +1,48 @@
+{
+  "total_records": 191,
+  "successful_records": 191,
+  "errors": 0,
+  "no_coordinate": 0,
+  "intervened_records": 191,
+  "baseline_accuracy_all": 0.6020942408376964,
+  "baseline_accuracy_all_count": 191,
+  "baseline_accuracy_paired_subset": 0.6020942408376964,
+  "counterfactual_accuracy_paired_subset": 0.6230366492146597,
+  "paired_subset_count": 191,
+  "counterfactual_accuracy_count": 191,
+  "answer_changed_rate": 0.12041884816753927,
+  "answer_changed_count": 23,
+  "correctness_transitions": {
+    "correct_to_wrong": 8,
+    "wrong_to_correct": 12,
+    "correct_to_correct": 107,
+    "wrong_to_wrong": 64
+  },
+  "correctness_transition_rates": {
+    "correct_to_wrong": 0.041884816753926704,
+    "wrong_to_correct": 0.06282722513089005,
+    "correct_to_correct": 0.5602094240837696,
+    "wrong_to_wrong": 0.33507853403141363
+  },
+  "settings": {
+    "baseline_only": false,
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "likelihood_reduction": "mean",
+    "perturb_mode": "remove_grounding",
+    "perturb_index": null,
+    "perturb_position": "random",
+    "selection_seed": 3774343218531642133,
+    "perturb_seed": 6593279193357238967,
+    "iou_range": [
+      0.0,
+      0.1
+    ],
+    "perturb_box_mode": "random",
+    "random_box_size_range": [
+      0.05,
+      0.5
+    ]
+  },
+  "accuracy_drop_paired_subset": -0.020942408376963373
+}

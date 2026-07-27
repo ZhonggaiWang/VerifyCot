@@ -14,7 +14,9 @@ from locals.datasets.preprocessor import VoCoT_InputProcessor
 from omegaconf import OmegaConf
 from utils.util import instantiate_from_config
 from utils.coordinate_intervention import (
+    OnlineOracleCoordinateLogitsProcessor,
     PrefixReplayCoordinateLogitsProcessor,
+    PrefixReplayRemoveGroundingLogitsProcessor,
     box_iou,
     find_coordinate_spans,
     make_random_box_perturbation,
@@ -282,15 +284,16 @@ def _completion_metadata(model, tokenizer, response, sequences, prompt_length):
 def counterfactual_infer(model, preprocessor, image, query, cot=True, max_new_tokens=1024,
                          temperature=0.0, perturb_index=None, selection_seed=None,
                          perturb_seed=None, perturb_iou_range=(0.0, 0.2),
-                         perturb_box_mode='random', random_box_min_size=0.05,
+                         perturb_mode='random_box', perturb_box_mode='random', random_box_min_size=0.05,
                          random_box_max_size=0.5, conversation=None, options=None,
                          return_sequences=False, allow_missing_coordinates=False):
-    """Replace one baseline grounding box and freely decode the following CoT.
+    """Intervene on one baseline grounding and freely decode the following CoT.
 
     A normal rollout first determines the number and token offsets of generated
-    coordinates.  The counterfactual rollout exactly replays all generated text
-    through the selected ``<coor>`` token, replaces only that coordinate, then
-    releases decoding after its closing ``</coor>``.
+    coordinates.  ``random_box`` replays through the selected ``<coor>``,
+    replaces its coordinate and then releases after ``</coor>``.
+    ``remove_grounding`` replays only the preceding prefix, masks the selected
+    opening ``<coor>``, and releases immediately with no visual feature bind.
     """
     baseline_batch = _build_inference_batch(
         preprocessor, image, query, cot, conversation=conversation, options=options
@@ -339,30 +342,42 @@ def counterfactual_infer(model, preprocessor, image, query, cot=True, max_new_to
         if not 0 <= intervention_index < len(spans):
             raise ValueError(f"perturb_index must be in [1, {len(spans)}]")
     baseline_box = tuple(baseline['boxes'][intervention_index])
-    perturb_rng = random.Random(perturb_seed)
-    if perturb_box_mode == 'random':
-        replacement_box = make_random_box_perturbation(
-            baseline_box,
-            perturb_rng,
-            iou_range=perturb_iou_range,
-            min_box_size=random_box_min_size,
-            max_box_size=random_box_max_size,
+    intervention_boc_offset = spans[intervention_index][0]
+    replacement_box = None
+    if perturb_mode == 'random_box':
+        perturb_rng = random.Random(perturb_seed)
+        if perturb_box_mode == 'random':
+            replacement_box = make_random_box_perturbation(
+                baseline_box,
+                perturb_rng,
+                iou_range=perturb_iou_range,
+                min_box_size=random_box_min_size,
+                max_box_size=random_box_max_size,
+            )
+        elif perturb_box_mode == 'same_shape':
+            replacement_box = make_same_shape_perturbation(
+                baseline_box,
+                perturb_rng,
+                iou_range=perturb_iou_range,
+            )
+        else:
+            raise ValueError("perturb_box_mode must be 'random' or 'same_shape'")
+        processor = PrefixReplayCoordinateLogitsProcessor(
+            preprocessor.tokenizer,
+            prompt_length=prompt_length,
+            baseline_generated_ids=baseline['generated_ids'],
+            intervention_boc_offset=intervention_boc_offset,
+            replacement_box=replacement_box,
         )
-    elif perturb_box_mode == 'same_shape':
-        replacement_box = make_same_shape_perturbation(
-            baseline_box,
-            perturb_rng,
-            iou_range=perturb_iou_range,
+    elif perturb_mode == 'remove_grounding':
+        processor = PrefixReplayRemoveGroundingLogitsProcessor(
+            preprocessor.tokenizer,
+            prompt_length=prompt_length,
+            baseline_generated_ids=baseline['generated_ids'],
+            intervention_boc_offset=intervention_boc_offset,
         )
     else:
-        raise ValueError("perturb_box_mode must be 'random' or 'same_shape'")
-    processor = PrefixReplayCoordinateLogitsProcessor(
-        preprocessor.tokenizer,
-        prompt_length=prompt_length,
-        baseline_generated_ids=baseline['generated_ids'],
-        intervention_boc_offset=spans[intervention_index][0],
-        replacement_box=replacement_box,
-    )
+        raise ValueError("perturb_mode must be 'random_box' or 'remove_grounding'")
 
     counterfactual_batch = _build_inference_batch(
         preprocessor, image, query, cot, conversation=conversation, options=options
@@ -379,30 +394,40 @@ def counterfactual_infer(model, preprocessor, image, query, cot=True, max_new_to
         model, preprocessor.tokenizer, counterfactual_response,
         counterfactual_sequences, prompt_length
     )
-    replay_length = spans[intervention_index][0] + 1
+    replay_length = intervention_boc_offset + (1 if perturb_mode == 'random_box' else 0)
     prefix_verified = (
         counterfactual['generated_ids'][:replay_length]
         == baseline['generated_ids'][:replay_length]
     )
     if not prefix_verified:
         raise RuntimeError('counterfactual prefix does not match the replayed baseline prefix')
-    if len(counterfactual['boxes']) <= intervention_index:
-        raise RuntimeError('counterfactual generation ended before the replacement coordinate was decoded')
-    if counterfactual['boxes'][intervention_index] != list(replacement_box):
-        raise RuntimeError('counterfactual text does not contain the replacement coordinate')
-    if counterfactual['bound_boxes'] is not None:
-        if len(counterfactual['bound_boxes']) <= intervention_index:
-            raise RuntimeError('box_align did not bind the replacement coordinate')
-        if tuple(counterfactual['bound_boxes'][intervention_index]) != replacement_box:
-            raise RuntimeError('box_align did not receive the replacement coordinate')
+    removal_verified = None
+    if perturb_mode == 'random_box':
+        if len(counterfactual['boxes']) <= intervention_index:
+            raise RuntimeError('counterfactual generation ended before the replacement coordinate was decoded')
+        if counterfactual['boxes'][intervention_index] != list(replacement_box):
+            raise RuntimeError('counterfactual text does not contain the replacement coordinate')
+        if counterfactual['bound_boxes'] is not None:
+            if len(counterfactual['bound_boxes']) <= intervention_index:
+                raise RuntimeError('box_align did not bind the replacement coordinate')
+            if tuple(counterfactual['bound_boxes'][intervention_index]) != replacement_box:
+                raise RuntimeError('box_align did not receive the replacement coordinate')
+    else:
+        if len(counterfactual['generated_ids']) <= intervention_boc_offset:
+            raise RuntimeError('counterfactual generation ended before grounding removal')
+        removal_verified = (
+            counterfactual['generated_ids'][intervention_boc_offset] != model.boc_token_id
+            and processor.suppressed_boc
+        )
+        if not removal_verified:
+            raise RuntimeError('selected <coor> token was not removed')
 
     result = {
         'baseline': baseline,
         'intervention': {
             'index': intervention_index + 1,
             'baseline_box': baseline_box,
-            'replacement_box': replacement_box,
-            'replacement_iou': box_iou(baseline_box, replacement_box),
+            'perturb_mode': perturb_mode,
             'perturb_box_mode': perturb_box_mode,
             'baseline_coordinate_count': len(spans),
             'replayed_prefix_token_count': replay_length,
@@ -411,16 +436,179 @@ def counterfactual_infer(model, preprocessor, image, query, cot=True, max_new_to
         },
         'counterfactual': counterfactual,
     }
+    if perturb_mode == 'random_box':
+        result['intervention'].update({
+            'replacement_box': replacement_box,
+            'replacement_iou': box_iou(baseline_box, replacement_box),
+        })
+    else:
+        result['intervention'].update({
+            'suppressed_boc_token': True,
+            'selected_grounding_removed': removal_verified,
+            'refbind_injected_at_selected_grounding': False,
+        })
     if return_sequences:
         result['_baseline_sequences'] = baseline_sequences
         result['_counterfactual_sequences'] = counterfactual_sequences
     return result
 
 
+def _boxes_match(first, second, tolerance=1e-6):
+    return len(first) == len(second) and all(
+        abs(float(left) - float(right)) <= tolerance
+        for left, right in zip(first, second)
+    )
+
+
+def online_oracle_infer(model, preprocessor, image, query=None, cot=True,
+                        oracle_targets=None, max_new_tokens=1024, temperature=0.0,
+                        conversation=None, options=None, return_sequences=False,
+                        context_window_tokens=48):
+    """Run free CoT generation with online GT correction of explicit targets.
+
+    ``oracle_targets`` contains dictionaries with ``object`` and normalized
+    ``box`` keys, plus optional strict ``aliases``.  The model freely generates
+    every ordinary token and every unmatched coordinate.  A matching GT box is
+    forced only after the model itself emits ``<coor>``, so the native
+    ``generate_box`` call binds its matching visual feature at ``</coor>``.
+    """
+    if not oracle_targets:
+        raise ValueError('oracle_targets must contain at least one annotated target')
+    oracle_batch = _build_inference_batch(
+        preprocessor, image, query, cot, conversation=conversation, options=options
+    )
+    prompt_length = oracle_batch['input_ids'].shape[-1]
+    processor = OnlineOracleCoordinateLogitsProcessor(
+        preprocessor.tokenizer,
+        prompt_length=prompt_length,
+        oracle_targets=oracle_targets,
+        context_window_tokens=context_window_tokens,
+    )
+    oracle_response, _, oracle_sequences = model.condition_completion(
+        oracle_batch,
+        avoid_image_gen=True,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        logits_processor=LogitsProcessorList([processor]),
+        record_bound_boxes=True,
+    )
+    oracle = _completion_metadata(
+        model, preprocessor.tokenizer, oracle_response, oracle_sequences, prompt_length
+    )
+    spans = find_coordinate_spans(
+        oracle['generated_ids'], model.boc_token_id, model.eoc_token_id
+    )
+    if len(spans) != len(oracle['boxes']):
+        raise RuntimeError(
+            f'online oracle has {len(spans)} token coordinate spans but '
+            f'{len(oracle["boxes"])} parseable boxes'
+        )
+    if oracle['bound_boxes'] is not None and len(oracle['bound_boxes']) != len(oracle['boxes']):
+        raise RuntimeError(
+            f'online oracle bound {len(oracle["bound_boxes"])} boxes but generated '
+            f'{len(oracle["boxes"])} coordinate spans'
+        )
+
+    events = processor.events
+    forced_events = [event for event in events if event['decision'] == 'forced_gt_box']
+    for event in forced_events:
+        coordinate_index = event['coordinate_index']
+        if coordinate_index > len(oracle['boxes']):
+            event['verification'] = 'incomplete_generation'
+            continue
+        text_box = oracle['boxes'][coordinate_index - 1]
+        if not _boxes_match(text_box, event['oracle_box']):
+            raise RuntimeError(
+                f'online oracle text box at coordinate {coordinate_index} does not match its GT box'
+            )
+        if oracle['bound_boxes'] is not None:
+            bound_box = oracle['bound_boxes'][coordinate_index - 1]
+            if not _boxes_match(bound_box, event['oracle_box']):
+                raise RuntimeError(
+                    f'online oracle REFbind box at coordinate {coordinate_index} does not match its GT box'
+                )
+        event['verification'] = 'text_and_refbind_match_gt'
+
+    result = {
+        'oracle': oracle,
+        'intervention': {
+            'mode': 'online_explicit_target_oracle',
+            'coordinate_event_count': len(events),
+            'generated_coordinate_count': len(oracle['boxes']),
+            'matched_coordinate_count': len(forced_events),
+            'forced_coordinate_count': len(forced_events),
+            'unmatched_coordinate_count': sum(
+                event['decision'] == 'kept_model_box' for event in events
+            ),
+            'events': events,
+            'context_window_tokens': context_window_tokens,
+        },
+    }
+    if return_sequences:
+        result['_oracle_sequences'] = oracle_sequences
+    return result
+
+
+def online_oracle_option_infer(model, preprocessor, image, conversation, options,
+                               oracle_targets, max_new_tokens=1024, temperature=0.0,
+                               likelihood_reduction='mean', further_instruct=True,
+                               context_window_tokens=48):
+    """Score normal and online-oracle CoTs through the original option metric."""
+    baseline_batch = _build_inference_batch(
+        preprocessor, image, conversation=conversation, options=options
+    )
+    baseline_prompt_length = baseline_batch['input_ids'].shape[-1]
+    baseline_response, _, baseline_sequences = model.condition_completion(
+        baseline_batch,
+        avoid_image_gen=True,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        record_bound_boxes=True,
+    )
+    baseline = _completion_metadata(
+        model, preprocessor.tokenizer, baseline_response,
+        baseline_sequences, baseline_prompt_length
+    )
+    oracle_rollout = online_oracle_infer(
+        model, preprocessor, image, query=None, cot=True,
+        oracle_targets=oracle_targets,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        conversation=conversation,
+        options=options,
+        return_sequences=True,
+        context_window_tokens=context_window_tokens,
+    )
+    oracle_sequences = oracle_rollout.pop('_oracle_sequences')
+
+    def score_option_sequences(sequences):
+        score_batch = _build_inference_batch(
+            preprocessor, image, conversation=conversation, options=options
+        )
+        with torch.inference_mode():
+            prediction, _ = model.calculate_options(
+                score_batch, cot=True, further_instruct=further_instruct,
+                temperature=temperature, max_new_tokens=max_new_tokens,
+                likelihood_reduction=likelihood_reduction,
+                thought_override_ids=sequences,
+            )
+        return int(prediction)
+
+    baseline_prediction = score_option_sequences(baseline_sequences)
+    oracle_prediction = score_option_sequences(oracle_sequences)
+    oracle_rollout['baseline'] = baseline
+    oracle_rollout['baseline_prediction'] = baseline_prediction
+    oracle_rollout['baseline_answer'] = options[baseline_prediction]
+    oracle_rollout['oracle_prediction'] = oracle_prediction
+    oracle_rollout['oracle_answer'] = options[oracle_prediction]
+    return oracle_rollout
+
+
 def counterfactual_option_infer(model, preprocessor, image, conversation, options,
                                 max_new_tokens=1024, temperature=0.0,
                                 perturb_index=None, selection_seed=None, perturb_seed=None,
-                                perturb_iou_range=(0.0, 0.2), perturb_box_mode='random',
+                                perturb_iou_range=(0.0, 0.2), perturb_mode='random_box',
+                                perturb_box_mode='random',
                                 random_box_min_size=0.05, random_box_max_size=0.5,
                                 likelihood_reduction='mean', further_instruct=True):
     """Score baseline and counterfactual CoTs with the original option metric.
@@ -434,6 +622,7 @@ def counterfactual_option_infer(model, preprocessor, image, conversation, option
         max_new_tokens=max_new_tokens, temperature=temperature,
         perturb_index=perturb_index, selection_seed=selection_seed,
         perturb_seed=perturb_seed, perturb_iou_range=perturb_iou_range,
+        perturb_mode=perturb_mode,
         perturb_box_mode=perturb_box_mode,
         random_box_min_size=random_box_min_size,
         random_box_max_size=random_box_max_size,
@@ -467,6 +656,27 @@ def counterfactual_option_infer(model, preprocessor, image, conversation, option
         rollout['counterfactual_prediction'] = None
         rollout['counterfactual_answer'] = None
     return rollout
+
+
+def baseline_option_infer(model, preprocessor, image, conversation, options,
+                          max_new_tokens=1024, temperature=0.0,
+                          likelihood_reduction='mean', further_instruct=True):
+    """Run the repository's unmodified CoT-plus-option-likelihood baseline."""
+    batch = _build_inference_batch(
+        preprocessor, image, conversation=conversation, options=options
+    )
+    with torch.inference_mode():
+        prediction, thought = model.calculate_options(
+            batch, cot=True, further_instruct=further_instruct,
+            temperature=temperature, max_new_tokens=max_new_tokens,
+            likelihood_reduction=likelihood_reduction,
+        )
+    prediction = int(prediction)
+    return {
+        'baseline_prediction': prediction,
+        'baseline_answer': options[prediction],
+        'baseline_thought': thought,
+    }
             
 
 if __name__=='__main__':

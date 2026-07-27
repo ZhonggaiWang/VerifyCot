@@ -1,0 +1,119 @@
+{
+  "total_records": 200,
+  "successful_records": 200,
+  "errors": 0,
+  "all_samples": {
+    "samples": 200,
+    "baseline_accuracy": 0.735,
+    "baseline_accuracy_count": 200,
+    "oracle_accuracy": 0.765,
+    "oracle_accuracy_count": 200,
+    "oracle_minus_baseline": 0.030000000000000027,
+    "forced_sample_count": 191,
+    "total_forced_coordinate_count": 423,
+    "answer_changed_count": 18,
+    "correctness_transitions": {
+      "correct_to_wrong": 4,
+      "wrong_to_correct": 10,
+      "correct_to_correct": 143,
+      "wrong_to_wrong": 43
+    }
+  },
+  "by_structural_type": {
+    "choose": {
+      "samples": 26,
+      "baseline_accuracy": 0.9230769230769231,
+      "baseline_accuracy_count": 26,
+      "oracle_accuracy": 0.9615384615384616,
+      "oracle_accuracy_count": 26,
+      "oracle_minus_baseline": 0.038461538461538436,
+      "forced_sample_count": 22,
+      "total_forced_coordinate_count": 53,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 1,
+        "correct_to_correct": 24,
+        "wrong_to_wrong": 1
+      }
+    },
+    "compare": {
+      "samples": 6,
+      "baseline_accuracy": 0.3333333333333333,
+      "baseline_accuracy_count": 6,
+      "oracle_accuracy": 0.3333333333333333,
+      "oracle_accuracy_count": 6,
+      "oracle_minus_baseline": 0.0,
+      "forced_sample_count": 6,
+      "total_forced_coordinate_count": 24,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 2,
+        "wrong_to_wrong": 4
+      }
+    },
+    "logical": {
+      "samples": 23,
+      "baseline_accuracy": 0.9565217391304348,
+      "baseline_accuracy_count": 23,
+      "oracle_accuracy": 0.9565217391304348,
+      "oracle_accuracy_count": 23,
+      "oracle_minus_baseline": 0.0,
+      "forced_sample_count": 22,
+      "total_forced_coordinate_count": 61,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 22,
+        "wrong_to_wrong": 1
+      }
+    },
+    "query": {
+      "samples": 96,
+      "baseline_accuracy": 0.625,
+      "baseline_accuracy_count": 96,
+      "oracle_accuracy": 0.6666666666666666,
+      "oracle_accuracy_count": 96,
+      "oracle_minus_baseline": 0.04166666666666663,
+      "forced_sample_count": 93,
+      "total_forced_coordinate_count": 192,
+      "answer_changed_count": 14,
+      "correctness_transitions": {
+        "correct_to_wrong": 3,
+        "wrong_to_correct": 7,
+        "correct_to_correct": 57,
+        "wrong_to_wrong": 29
+      }
+    },
+    "verify": {
+      "samples": 49,
+      "baseline_accuracy": 0.7959183673469388,
+      "baseline_accuracy_count": 49,
+      "oracle_accuracy": 0.8163265306122449,
+      "oracle_accuracy_count": 49,
+      "oracle_minus_baseline": 0.020408163265306145,
+      "forced_sample_count": 48,
+      "total_forced_coordinate_count": 93,
+      "answer_changed_count": 3,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 2,
+        "correct_to_correct": 38,
+        "wrong_to_wrong": 8
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0,
+    "context_window_tokens": 48,
+    "oracle_mode": "online_explicit_target_oracle",
+    "coreference": "off",
+    "alias_policy": "normalized full GQA scene-graph object name only"
+  }
+}

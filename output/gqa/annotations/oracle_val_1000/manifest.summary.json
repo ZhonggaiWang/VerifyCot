@@ -1,0 +1,49 @@
+{
+  "source_questions_path": "/data/zhonggai/GQA/val_balanced_questions.json",
+  "source_scene_graphs_path": "/data/zhonggai/GQA/val_sceneGraphs.json",
+  "image_dir": "/data/zhonggai/GQA/images",
+  "total_source_questions": 132062,
+  "eligible_candidates": 106355,
+  "selected_samples": 1000,
+  "selection_seed": 20260724,
+  "max_target_objects": 3,
+  "stratify_by": "structural_semantic",
+  "eligible_type_counts": {
+    "choose:attr": 8380,
+    "choose:cat": 1376,
+    "choose:rel": 5627,
+    "compare:attr": 3602,
+    "logical:attr": 3322,
+    "logical:obj": 9504,
+    "query:attr": 16518,
+    "query:cat": 6277,
+    "query:rel": 26517,
+    "verify:attr": 7931,
+    "verify:obj": 2060,
+    "verify:rel": 15241
+  },
+  "selected_type_counts": {
+    "choose:attr": 79,
+    "choose:cat": 13,
+    "choose:rel": 53,
+    "compare:attr": 34,
+    "logical:attr": 31,
+    "logical:obj": 89,
+    "query:attr": 155,
+    "query:cat": 59,
+    "query:rel": 249,
+    "verify:attr": 75,
+    "verify:obj": 20,
+    "verify:rel": 143
+  },
+  "rejected_counts": {
+    "invalid_target_bbox": 2087,
+    "missing_question_visual_pointer": 23527,
+    "target_object_count_out_of_range": 93
+  },
+  "target_definition": "Ordered union of object IDs explicitly pointed to by question annotations and object IDs explicitly named in the semantic program.",
+  "coordinate_convention": {
+    "input_bbox": "[x, y, width, height] in GQA scene-graph image pixels",
+    "output_bbox": "[x1, y1, x2, y2] normalized to [0, 1]"
+  }
+}
