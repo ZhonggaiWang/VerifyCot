@@ -506,7 +506,8 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
         return last_hidden_state
 
     def condition_completion(self, input_dict, temperature=0.2, max_new_tokens=128, guidance_scale=7.5,
-                             avoid_image_gen=False, logits_processor=None, record_bound_boxes=False, **kwargs):
+                             avoid_image_gen=False, logits_processor=None, stopping_criteria=None,
+                             record_bound_boxes=False, **kwargs):
         
         self.to_generate_images = []
         self.cache_images = None
@@ -535,6 +536,7 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
                         max_new_tokens = max_new_tokens,
                         pad_token_id = self.tokenizer.pad_token_id,
                         logits_processor=logits_processor,
+                        stopping_criteria=stopping_criteria,
                         return_dict_in_generate = True
                     )
 

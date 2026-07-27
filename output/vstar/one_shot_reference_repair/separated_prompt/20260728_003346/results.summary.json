@@ -1,0 +1,66 @@
+{
+  "total_records": 198,
+  "successful_records": 198,
+  "error_records": 0,
+  "all_samples": {
+    "samples": 198,
+    "correct_count": 118,
+    "accuracy": 0.5959595959595959,
+    "exact_copy_count": 83,
+    "exact_copy_rate": 0.41919191919191917,
+    "replacement_iou_ge_0_5_count": 56,
+    "replacement_iou_ge_0_5_rate": 0.2828282828282828,
+    "mean_replacement_iou_gain": 0.2972969919511164
+  },
+  "by_selected_coordinate_index": {
+    "1": {
+      "samples": 124,
+      "correct_count": 72,
+      "accuracy": 0.5806451612903226,
+      "exact_copy_count": 67,
+      "exact_copy_rate": 0.5403225806451613,
+      "replacement_iou_ge_0_5_count": 2,
+      "replacement_iou_ge_0_5_rate": 0.016129032258064516,
+      "mean_replacement_iou_gain": 0.038124837589869794
+    },
+    "2": {
+      "samples": 62,
+      "correct_count": 37,
+      "accuracy": 0.5967741935483871,
+      "exact_copy_count": 14,
+      "exact_copy_rate": 0.22580645161290322,
+      "replacement_iou_ge_0_5_count": 44,
+      "replacement_iou_ge_0_5_rate": 0.7096774193548387,
+      "mean_replacement_iou_gain": 0.7119831725059335
+    },
+    "3": {
+      "samples": 11,
+      "correct_count": 9,
+      "accuracy": 0.8181818181818182,
+      "exact_copy_count": 2,
+      "exact_copy_rate": 0.18181818181818182,
+      "replacement_iou_ge_0_5_count": 9,
+      "replacement_iou_ge_0_5_rate": 0.8181818181818182,
+      "mean_replacement_iou_gain": 0.8176698045281209
+    },
+    "4": {
+      "samples": 1,
+      "correct_count": 0,
+      "accuracy": 0.0,
+      "exact_copy_count": 0,
+      "exact_copy_rate": 0.0,
+      "replacement_iou_ge_0_5_count": 1,
+      "replacement_iou_ge_0_5_rate": 1.0,
+      "mean_replacement_iou_gain": 1.0
+    }
+  },
+  "settings": {
+    "repair_mode": "separated_reference_feedback",
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "mode": "one_shot_reference_random_box_repair",
+    "initial_verification_count": 1,
+    "replacement_second_verification": false,
+    "later_coordinate_verification": false
+  }
+}

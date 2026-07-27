@@ -1,0 +1,39 @@
+{
+  "total_records": 198,
+  "successful_records": 198,
+  "error_records": 0,
+  "all_samples": {
+    "samples": 198,
+    "correct_count": 113,
+    "accuracy": 0.5707070707070707
+  },
+  "by_selected_coordinate_index": {
+    "1": {
+      "samples": 124,
+      "correct_count": 68,
+      "accuracy": 0.5483870967741935
+    },
+    "2": {
+      "samples": 62,
+      "correct_count": 36,
+      "accuracy": 0.5806451612903226
+    },
+    "3": {
+      "samples": 11,
+      "correct_count": 9,
+      "accuracy": 0.8181818181818182
+    },
+    "4": {
+      "samples": 1,
+      "correct_count": 0,
+      "accuracy": 0.0
+    }
+  },
+  "settings": {
+    "mode": "one_shot_reference_random_box_corruption",
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "verifier_called": false,
+    "random_box_committed": true
+  }
+}

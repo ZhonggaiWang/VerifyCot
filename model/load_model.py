@@ -23,6 +23,7 @@ from utils.coordinate_intervention import (
     make_same_shape_perturbation,
 )
 from utils.eval_util import extract_all_box_str
+from verifier import StoredOracleVerifier, VerifierController
 from model.language_model.volcano_llama import VolCanoLlamaForCausalLM,VolCanoConfig
 from model.language_model.volcano_mistral import VolCanoMistralForCausalLM, VolCanoMistralConfig
 from transformers import AutoTokenizer, LlamaTokenizer, LogitsProcessor, LogitsProcessorList
@@ -223,7 +224,25 @@ def load_model(model_path, device='cuda:0', precision='bf16'):
 
 def infer(model, preprocessor, image, query, cot=True, max_new_tokens=1024, temperature=0.0,
           randomize_coor=False, random_coor_seed=None, random_coor_min_size=0.05,
-          max_randomized_coors=None, return_metadata=False):
+          max_randomized_coors=None, return_metadata=False,
+          verifier_oracle_file=None, verifier_sample_id=None,
+          verifier_repair_mode='typed_feedback', verifier_accept_confidence=0.8,
+          verifier_max_retries=2, verifier_on_failure='skip_grounding_and_continue', verifier_log_path=None):
+    if verifier_oracle_file is not None:
+        if randomize_coor:
+            raise ValueError('randomize_coor and verifier_oracle_file cannot be enabled together')
+        result = verifier_infer(
+            model, preprocessor, image, query, cot=cot,
+            sample_id=verifier_sample_id, oracle_file=verifier_oracle_file,
+            max_new_tokens=max_new_tokens, temperature=temperature,
+            repair_mode=verifier_repair_mode,
+            accept_confidence=verifier_accept_confidence,
+            max_retries=verifier_max_retries,
+            on_failure=verifier_on_failure,
+            log_path=verifier_log_path,
+        )
+        response = [result.response]
+        return (response, result.as_dict()) if return_metadata else response
     if cot:
         query = ALL_IMG_TOKENS_STR + DEFAULT_GRD_TOKEN + '\n' + query + COT_ACTIVATION
     else:
@@ -250,6 +269,104 @@ def infer(model, preprocessor, image, query, cot=True, max_new_tokens=1024, temp
     if return_metadata:
         return txt_res, {'forced_boxes': [] if coor_processor is None else coor_processor.sampled_boxes}
     return txt_res
+
+
+def verifier_infer(model, preprocessor, image, query, cot=True, sample_id=None,
+                   oracle_file=None, max_new_tokens=1024, temperature=0.0,
+                   repair_mode='typed_feedback', accept_confidence=0.8,
+                   max_retries=2, on_failure='skip_grounding_and_continue', log_path=None,
+                   conversation=None, options=None):
+    """Run pre-commit coordinate verification with a stored oracle backend.
+
+    This is intentionally a separate entry point as well as an optional
+    ``infer`` mode, so existing benchmark code keeps its original inference
+    path unless it explicitly opts in.
+    """
+    if oracle_file is None:
+        raise ValueError('oracle_file is required for verifier_infer')
+
+    def batch_factory():
+        return _build_inference_batch(
+            preprocessor, image, query, cot, conversation=conversation, options=options
+        )
+
+    controller = VerifierController(
+        model=model,
+        tokenizer=preprocessor.tokenizer,
+        batch_factory=batch_factory,
+        verifier=StoredOracleVerifier(oracle_file),
+        sample_id=sample_id,
+        repair_mode=repair_mode,
+        accept_confidence=accept_confidence,
+        max_retries=max_retries,
+        on_failure=on_failure,
+        log_path=log_path,
+    )
+    return controller.run(max_new_tokens=max_new_tokens, temperature=temperature)
+
+
+def one_shot_reference_repair_infer(
+        model, preprocessor, image, query, reference_generated_ids,
+        selected_coordinate_index, random_box, cot=True, sample_id=None,
+        oracle_file=None, max_new_tokens=1024, temperature=0.0,
+        repair_mode='typed_feedback', accept_confidence=0.8, log_path=None,
+        conversation=None, options=None):
+    """Repair one random intervention on a saved online-oracle CoT trajectory.
+
+    The StoredOracle file contains exactly the selected initial candidate's
+    ``misaligned/wrong_object`` verdict.  The replacement and every later
+    coordinate are intentionally not verifier-checked in this one-shot mode.
+    """
+    if oracle_file is None:
+        raise ValueError('oracle_file is required for one_shot_reference_repair_infer')
+
+    def batch_factory():
+        return _build_inference_batch(
+            preprocessor, image, query, cot, conversation=conversation, options=options
+        )
+
+    controller = VerifierController(
+        model=model,
+        tokenizer=preprocessor.tokenizer,
+        batch_factory=batch_factory,
+        verifier=StoredOracleVerifier(oracle_file),
+        sample_id=sample_id,
+        repair_mode=repair_mode,
+        accept_confidence=accept_confidence,
+        max_retries=0,
+        on_failure='abort_sample',
+        log_path=log_path,
+    )
+    return controller.run_one_shot_reference_repair(
+        reference_generated_ids=reference_generated_ids,
+        selected_coordinate_index=selected_coordinate_index,
+        random_box=random_box,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+    )
+
+
+def one_shot_reference_corruption_infer(
+        model, preprocessor, image, query, reference_generated_ids,
+        selected_coordinate_index, random_box, cot=True, sample_id=None,
+        max_new_tokens=1024, temperature=0.0, log_path=None,
+        conversation=None, options=None):
+    """Paired control: commit q_i on a reference trajectory, with no repair."""
+    def batch_factory():
+        return _build_inference_batch(
+            preprocessor, image, query, cot, conversation=conversation, options=options
+        )
+    # The StoredOracle backend is unused in this control, but constructing the
+    # shared controller keeps prefix replay/REFbind behavior identical to repair.
+    controller = VerifierController(
+        model=model, tokenizer=preprocessor.tokenizer, batch_factory=batch_factory,
+        verifier=None, sample_id=sample_id, repair_mode='typed_feedback',
+        on_failure='abort_sample', log_path=log_path,
+    )
+    return controller.run_one_shot_reference_corruption(
+        reference_generated_ids, selected_coordinate_index, random_box,
+        max_new_tokens=max_new_tokens, temperature=temperature,
+    )
 
 
 def _build_inference_batch(preprocessor, image, query=None, cot=True, conversation=None, options=None):
