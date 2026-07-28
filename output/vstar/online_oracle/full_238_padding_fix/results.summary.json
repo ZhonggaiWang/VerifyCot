@@ -1,0 +1,125 @@
+{
+  "total_records": 238,
+  "successful_records": 238,
+  "errors": 0,
+  "all_samples": {
+    "samples": 238,
+    "baseline_accuracy": 0.5840336134453782,
+    "baseline_accuracy_count": 238,
+    "oracle_accuracy": 0.6680672268907563,
+    "oracle_accuracy_count": 238,
+    "oracle_minus_baseline": 0.08403361344537807,
+    "answer_changed_count": 52,
+    "forced_sample_count": 198,
+    "no_forced_match_sample_count": 40,
+    "total_forced_coordinate_count": 341,
+    "correctness_transitions": {
+      "correct_to_wrong": 12,
+      "wrong_to_correct": 32,
+      "correct_to_correct": 127,
+      "wrong_to_wrong": 67
+    }
+  },
+  "complete_target_coverage_subset": {
+    "samples": 216,
+    "baseline_accuracy": 0.5787037037037037,
+    "baseline_accuracy_count": 216,
+    "oracle_accuracy": 0.6435185185185185,
+    "oracle_accuracy_count": 216,
+    "oracle_minus_baseline": 0.06481481481481477,
+    "answer_changed_count": 46,
+    "forced_sample_count": 183,
+    "no_forced_match_sample_count": 33,
+    "total_forced_coordinate_count": 319,
+    "correctness_transitions": {
+      "correct_to_wrong": 12,
+      "wrong_to_correct": 26,
+      "correct_to_correct": 113,
+      "wrong_to_wrong": 65
+    }
+  },
+  "by_category": {
+    "GPT4V-hard": {
+      "samples": 17,
+      "baseline_accuracy": 0.5882352941176471,
+      "baseline_accuracy_count": 17,
+      "oracle_accuracy": 0.7647058823529411,
+      "oracle_accuracy_count": 17,
+      "oracle_minus_baseline": 0.17647058823529405,
+      "answer_changed_count": 3,
+      "forced_sample_count": 13,
+      "no_forced_match_sample_count": 4,
+      "total_forced_coordinate_count": 15,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 3,
+        "correct_to_correct": 10,
+        "wrong_to_wrong": 4
+      }
+    },
+    "OCR": {
+      "samples": 30,
+      "baseline_accuracy": 0.4666666666666667,
+      "baseline_accuracy_count": 30,
+      "oracle_accuracy": 0.5333333333333333,
+      "oracle_accuracy_count": 30,
+      "oracle_minus_baseline": 0.06666666666666665,
+      "answer_changed_count": 5,
+      "forced_sample_count": 26,
+      "no_forced_match_sample_count": 4,
+      "total_forced_coordinate_count": 29,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 3,
+        "correct_to_correct": 13,
+        "wrong_to_wrong": 13
+      }
+    },
+    "direct_attributes": {
+      "samples": 115,
+      "baseline_accuracy": 0.5652173913043478,
+      "baseline_accuracy_count": 115,
+      "oracle_accuracy": 0.6086956521739131,
+      "oracle_accuracy_count": 115,
+      "oracle_minus_baseline": 0.0434782608695653,
+      "answer_changed_count": 24,
+      "forced_sample_count": 98,
+      "no_forced_match_sample_count": 17,
+      "total_forced_coordinate_count": 181,
+      "correctness_transitions": {
+        "correct_to_wrong": 6,
+        "wrong_to_correct": 11,
+        "correct_to_correct": 59,
+        "wrong_to_wrong": 39
+      }
+    },
+    "relative_position": {
+      "samples": 76,
+      "baseline_accuracy": 0.6578947368421053,
+      "baseline_accuracy_count": 76,
+      "oracle_accuracy": 0.7894736842105263,
+      "oracle_accuracy_count": 76,
+      "oracle_minus_baseline": 0.13157894736842102,
+      "answer_changed_count": 20,
+      "forced_sample_count": 61,
+      "no_forced_match_sample_count": 15,
+      "total_forced_coordinate_count": 116,
+      "correctness_transitions": {
+        "correct_to_wrong": 5,
+        "wrong_to_correct": 15,
+        "correct_to_correct": 45,
+        "wrong_to_wrong": 11
+      }
+    }
+  },
+  "settings": {
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "likelihood_reduction": "mean",
+    "context_window_tokens": 48,
+    "oracle_mode": "online_explicit_target_oracle",
+    "coreference": "off",
+    "alias_policy": "normalized full target-object phrase only",
+    "oracle_box_coordinate_system": "normalized_xyxy_on_center_padded_square"
+  }
+}

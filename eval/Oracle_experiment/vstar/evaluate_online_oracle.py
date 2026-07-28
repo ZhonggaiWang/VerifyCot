@@ -22,6 +22,10 @@ from tqdm import tqdm
 
 from constants import ALL_IMG_TOKENS_STR, COT_ACTIVATION, DEFAULT_GRD_TOKEN
 from model.load_model import load_model, online_oracle_option_infer
+from utils.coordinate_intervention import normalized_box_to_square_padding
+
+
+ORACLE_BOX_COORDINATE_SYSTEM = 'normalized_xyxy_on_center_padded_square'
 
 
 def parse_args():
@@ -93,12 +97,21 @@ class VStarOnlineOracleDataset:
         boxes = oracle_record['normalized_bboxes_xyxy']
         if len(objects) != len(boxes):
             raise ValueError(f'Target/box count mismatch for audited sample {index}')
+        image_size = oracle_record.get('image_size')
+        if not isinstance(image_size, dict):
+            raise ValueError(f'Audited sample {index} has no image_size')
+        image_width = image_size.get('width')
+        image_height = image_size.get('height')
+        square_padded_boxes = [
+            normalized_box_to_square_padding(box, image_width, image_height)
+            for box in boxes
+        ]
         # ``aliases`` is deliberately just the annotated name.  The processor
         # normalizes articles, possessives, punctuation, and hyphenation; it
         # does not expand synonyms or drop discriminative modifiers.
         oracle_targets = [
             {'object': object_name, 'box': box, 'aliases': [object_name]}
-            for object_name, box in zip(objects, boxes)
+            for object_name, box in zip(objects, square_padded_boxes)
         ]
         question = annotation['question']
         return {
@@ -115,6 +128,12 @@ class VStarOnlineOracleDataset:
                 'value': ALL_IMG_TOKENS_STR + DEFAULT_GRD_TOKEN + '\n' + question + ' ' + COT_ACTIVATION,
             }],
             'oracle_targets': oracle_targets,
+            'source_oracle_boxes': boxes,
+            'oracle_box_coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
+            'source_image_size': {
+                'width': image_width,
+                'height': image_height,
+            },
             'has_complete_question_target_coverage': oracle_record[
                 'has_complete_question_target_coverage'
             ],
@@ -210,6 +229,7 @@ def make_summary(records, args):
             'oracle_mode': 'online_explicit_target_oracle',
             'coreference': 'off',
             'alias_policy': 'normalized full target-object phrase only',
+            'oracle_box_coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
         },
     }
 
@@ -219,6 +239,15 @@ def main():
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     existing_records = [] if args.no_resume else load_existing_records(output_path)
+    incompatible = [
+        record for record in existing_records
+        if record.get('oracle_box_coordinate_system') != ORACLE_BOX_COORDINATE_SYSTEM
+    ]
+    if incompatible:
+        raise ValueError(
+            'existing output uses the old or unknown oracle-box coordinate system; '
+            'choose a new --output path or rerun with --no-resume'
+        )
     completed_indices = {record['sample_index'] for record in existing_records if 'sample_index' in record}
     dataset = VStarOnlineOracleDataset(
         args.questions_path, args.image_dir, args.oracle_boxes_path
@@ -231,7 +260,8 @@ def main():
 
     if indices:
         model, preprocessor = load_model(args.model_path, precision='fp16')
-    with output_path.open('a') as handle:
+    output_mode = 'w' if args.no_resume else 'a'
+    with output_path.open(output_mode) as handle:
         for index in tqdm(indices, desc='VStar online oracle evaluation'):
             item = dataset[index]
             record = {
@@ -244,6 +274,9 @@ def main():
                 'label': item['label'],
                 'source_jsonl_label': item['source_jsonl_label'],
                 'oracle_targets': item['oracle_targets'],
+                'source_oracle_boxes': item['source_oracle_boxes'],
+                'oracle_box_coordinate_system': item['oracle_box_coordinate_system'],
+                'source_image_size': item['source_image_size'],
                 'has_complete_question_target_coverage': item[
                     'has_complete_question_target_coverage'
                 ],
@@ -251,6 +284,14 @@ def main():
             try:
                 with Image.open(item['image_path']) as source_image:
                     image = source_image.convert('RGB')
+                if image.size != (
+                    item['source_image_size']['width'],
+                    item['source_image_size']['height'],
+                ):
+                    raise ValueError(
+                        f'image size {image.size} does not match audited size '
+                        f'{item["source_image_size"]}'
+                    )
                 result = online_oracle_option_infer(
                     model, preprocessor, image, item['conversation'], item['options'],
                     oracle_targets=item['oracle_targets'],

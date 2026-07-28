@@ -23,7 +23,12 @@ from utils.coordinate_intervention import (
     make_same_shape_perturbation,
 )
 from utils.eval_util import extract_all_box_str
-from verifier import StoredOracleVerifier, VerifierController
+from verifier import (
+    SingleCandidateOracleVerifier,
+    StoredOracleVerifier,
+    VerificationResult,
+    VerifierController,
+)
 from model.language_model.volcano_llama import VolCanoLlamaForCausalLM,VolCanoConfig
 from model.language_model.volcano_mistral import VolCanoMistralForCausalLM, VolCanoMistralConfig
 from transformers import AutoTokenizer, LlamaTokenizer, LogitsProcessor, LogitsProcessorList
@@ -410,6 +415,62 @@ def one_shot_reference_repair_text_only_q_infer(
         conversation=conversation,
         options=options,
         sandbox_refbind_mode='text_only',
+    )
+
+
+def one_shot_natural_error_repair_infer(
+        model, preprocessor, image, query, baseline_generated_ids,
+        selected_coordinate_index, baseline_box, oracle_target_box, target_object,
+        cot=True, sample_id=None, max_new_tokens=1024, temperature=0.0,
+        repair_mode='concise_typed_feedback', accept_confidence=0.8,
+        log_path=None, conversation=None, options=None):
+    """Repair one GT-audited natural baseline error with text-only feedback.
+
+    The oracle GT box is retained only for evaluation diagnostics.  It is
+    never included in the repair prompt.  The model receives only the fixed
+    ``misaligned/wrong_object`` checker output and the rejected baseline box
+    rendered as ordinary text, so q has no temporary REFbind feature.
+    """
+    if repair_mode != 'concise_typed_feedback':
+        raise ValueError(
+            'natural-error experiment currently requires concise_typed_feedback'
+        )
+    if sample_id is None:
+        raise ValueError('sample_id is required')
+
+    def batch_factory():
+        return _build_inference_batch(
+            preprocessor, image, query, cot, conversation=conversation, options=options
+        )
+
+    verifier = SingleCandidateOracleVerifier(
+        sample_id=str(sample_id),
+        grounding_step=int(selected_coordinate_index),
+        candidate_bbox=baseline_box,
+        result=VerificationResult(
+            verdict='misaligned', reason='wrong_object', confidence=1.0
+        ),
+    )
+    controller = VerifierController(
+        model=model,
+        tokenizer=preprocessor.tokenizer,
+        batch_factory=batch_factory,
+        verifier=verifier,
+        sample_id=str(sample_id),
+        repair_mode=repair_mode,
+        accept_confidence=accept_confidence,
+        max_retries=0,
+        on_failure='abort_sample',
+        log_path=log_path,
+    )
+    return controller.run_one_shot_natural_error_repair_text_only_q(
+        reference_generated_ids=baseline_generated_ids,
+        selected_coordinate_index=selected_coordinate_index,
+        baseline_box=baseline_box,
+        oracle_target_box=oracle_target_box,
+        target_object=target_object,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
     )
 
 

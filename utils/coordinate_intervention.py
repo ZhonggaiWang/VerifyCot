@@ -13,6 +13,56 @@ from constants import DEFAULT_BOC_TOKEN, DEFAULT_EOC_TOKEN
 Box = Tuple[float, float, float, float]
 
 
+def normalized_box_to_square_padding(
+    box: Sequence[float],
+    image_width: int,
+    image_height: int,
+) -> Box:
+    """Map an original-image box onto VoCoT's center-padded square canvas.
+
+    ``VoCoT_InputProcessor.expand2square_fn`` pastes the original image at an
+    integer ``// 2`` offset on the short axis.  Coordinates consumed by
+    ``generate_box``/REFbind are normalized against that padded square, so GT
+    boxes normalized against the unpadded image must undergo the same mapping.
+    """
+    if len(box) != 4:
+        raise ValueError('box must contain xmin, ymin, xmax, ymax')
+    if (
+        not isinstance(image_width, int)
+        or isinstance(image_width, bool)
+        or not isinstance(image_height, int)
+        or isinstance(image_height, bool)
+        or image_width <= 0
+        or image_height <= 0
+    ):
+        raise ValueError(
+            f'image dimensions must be positive integers, got {image_width}x{image_height}'
+        )
+    original = tuple(float(value) for value in box)
+    if not all(math.isfinite(value) for value in original):
+        raise ValueError(f'box must be finite: {box}')
+    x_min, y_min, x_max, y_max = original
+    if not 0 <= x_min < x_max <= 1 or not 0 <= y_min < y_max <= 1:
+        raise ValueError(f'invalid normalized xyxy box: {box}')
+
+    square_size = max(image_width, image_height)
+    absolute = [
+        x_min * image_width,
+        y_min * image_height,
+        x_max * image_width,
+        y_max * image_height,
+    ]
+    if image_width > image_height:
+        padding = (image_width - image_height) // 2
+        absolute[1] += padding
+        absolute[3] += padding
+    elif image_height > image_width:
+        padding = (image_height - image_width) // 2
+        absolute[0] += padding
+        absolute[2] += padding
+    return tuple(value / square_size for value in absolute)
+
+
 def normalize_object_reference(text: str) -> Tuple[str, ...]:
     """Normalize an object reference for strict, token-level alias matching.
 

@@ -1,0 +1,655 @@
+Run id: padding_fix_v1; output: output/vstar/natural_error_repair/text_only_concise/padding_fix_v1/results.jsonl
+Baseline records selected: 238; running: 124; resumed: 114
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+You are using a model of type EditGPTMistral to instantiate a model of type VolCanoMistral. This is not supported for all configurations of models and can yield errors.
+Create VIT
+/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+End Create VIT
+Create Front Projector
+End Create Front Projector
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:00<00:01,  1.51it/s]Loading checkpoint shards:  50%|█████     | 2/4 [00:01<00:01,  1.56it/s]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:01<00:00,  1.52it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  2.14it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.87it/s]
+VStar natural-error oracle repair:   0%|          | 0/124 [00:00<?, ?it/s]/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/transformers/generation/configuration_utils.py:392: UserWarning: `do_sample` is set to `False`. However, `temperature` is set to `0.0` -- this flag is only used in sample-based generation modes. You should set `do_sample=True` or unset `temperature`.
+  warnings.warn(
+                                                                          [main:114] step=1 plastic basin: IoU(q,GT)=0.100 -> IoU(r,GT)=0.100; pred 0->0, correct=True
+VStar natural-error oracle repair:   0%|          | 0/124 [00:06<?, ?it/s]VStar natural-error oracle repair:   1%|          | 1/124 [00:06<12:34,  6.14s/it]                                                                                  [main:115] step=1 hand lamp: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:   1%|          | 1/124 [00:11<12:34,  6.14s/it]VStar natural-error oracle repair:   2%|▏         | 2/124 [00:11<11:39,  5.73s/it]                                                                                  [main:117] step=2 drum: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->1, correct=False
+VStar natural-error oracle repair:   2%|▏         | 2/124 [00:19<11:39,  5.73s/it]VStar natural-error oracle repair:   3%|▎         | 4/124 [00:19<08:58,  4.48s/it]                                                                                  [main:118] step=1 dog: IoU(q,GT)=0.348 -> IoU(r,GT)=0.348; pred 0->0, correct=True
+VStar natural-error oracle repair:   3%|▎         | 4/124 [00:25<08:58,  4.48s/it]VStar natural-error oracle repair:   4%|▍         | 5/124 [00:25<09:54,  4.99s/it]                                                                                  [main:119] step=1 cyclist: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:   4%|▍         | 5/124 [00:30<09:54,  4.99s/it]VStar natural-error oracle repair:   5%|▍         | 6/124 [00:30<10:09,  5.17s/it]                                                                                  [main:121] step=1 clock: IoU(q,GT)=0.227 -> IoU(r,GT)=0.227; pred 0->0, correct=True
+VStar natural-error oracle repair:   5%|▍         | 6/124 [00:36<10:09,  5.17s/it]VStar natural-error oracle repair:   6%|▋         | 8/124 [00:36<08:05,  4.18s/it]                                                                                  [main:122] step=1 clock: IoU(q,GT)=0.275 -> IoU(r,GT)=0.275; pred 1->1, correct=False
+VStar natural-error oracle repair:   6%|▋         | 8/124 [00:42<08:05,  4.18s/it]VStar natural-error oracle repair:   7%|▋         | 9/124 [00:42<08:51,  4.62s/it]                                                                                  [main:123] step=1 purple umbrella: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:   7%|▋         | 9/124 [00:48<08:51,  4.62s/it]VStar natural-error oracle repair:   8%|▊         | 10/124 [00:48<09:18,  4.90s/it]                                                                                   [main:124] step=2 dog: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:   8%|▊         | 10/124 [00:56<09:18,  4.90s/it]VStar natural-error oracle repair:   9%|▉         | 11/124 [00:56<10:34,  5.62s/it]                                                                                   [main:125] step=1 banana doll: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:   9%|▉         | 11/124 [01:02<10:34,  5.62s/it]VStar natural-error oracle repair:  10%|▉         | 12/124 [01:02<10:47,  5.78s/it]                                                                                   [main:126] step=1 baby carriage: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  10%|▉         | 12/124 [01:08<10:47,  5.78s/it]VStar natural-error oracle repair:  10%|█         | 13/124 [01:08<10:55,  5.90s/it]                                                                                   [main:127] step=1 red vehicle: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  10%|█         | 13/124 [01:14<10:55,  5.90s/it]VStar natural-error oracle repair:  11%|█▏        | 14/124 [01:14<11:02,  6.02s/it]                                                                                   [main:128] step=1 traffic light: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  11%|█▏        | 14/124 [01:20<11:02,  6.02s/it]VStar natural-error oracle repair:  12%|█▏        | 15/124 [01:20<11:01,  6.07s/it]                                                                                   [main:129] step=3 cyclist: IoU(q,GT)=0.000 -> IoU(r,GT)=0.049; pred 1->0, correct=True
+VStar natural-error oracle repair:  12%|█▏        | 15/124 [01:30<11:01,  6.07s/it]VStar natural-error oracle repair:  13%|█▎        | 16/124 [01:30<12:58,  7.21s/it]                                                                                   [main:130] step=1 dog: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  13%|█▎        | 16/124 [01:37<12:58,  7.21s/it]VStar natural-error oracle repair:  14%|█▎        | 17/124 [01:37<12:18,  6.90s/it]                                                                                   [main:131] step=2 dog: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  14%|█▎        | 17/124 [01:45<12:18,  6.90s/it]VStar natural-error oracle repair:  15%|█▍        | 18/124 [01:45<13:11,  7.47s/it]                                                                                   [main:132] step=1 water dispenser: IoU(q,GT)=0.024 -> IoU(r,GT)=0.024; pred 0->0, correct=True
+VStar natural-error oracle repair:  15%|█▍        | 18/124 [01:52<13:11,  7.47s/it]VStar natural-error oracle repair:  15%|█▌        | 19/124 [01:52<12:35,  7.20s/it]                                                                                   [main:133] step=1 scooter: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  15%|█▌        | 19/124 [01:58<12:35,  7.20s/it]VStar natural-error oracle repair:  16%|█▌        | 20/124 [01:58<12:01,  6.93s/it]                                                                                   [main:134] step=1 black chair: IoU(q,GT)=0.013 -> IoU(r,GT)=0.013; pred 1->1, correct=False
+VStar natural-error oracle repair:  16%|█▌        | 20/124 [02:04<12:01,  6.93s/it]VStar natural-error oracle repair:  17%|█▋        | 21/124 [02:04<11:31,  6.71s/it]                                                                                   [main:136] step=2 dog: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  17%|█▋        | 21/124 [02:13<11:31,  6.71s/it]VStar natural-error oracle repair:  19%|█▊        | 23/124 [02:13<09:22,  5.57s/it]                                                                                   [main:138] step=1 bicycle: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  19%|█▊        | 23/124 [02:19<09:22,  5.57s/it]VStar natural-error oracle repair:  20%|██        | 25/124 [02:19<07:35,  4.60s/it]                                                                                   [main:139] step=1 white vehicle: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  20%|██        | 25/124 [02:25<07:35,  4.60s/it]VStar natural-error oracle repair:  21%|██        | 26/124 [02:25<08:06,  4.96s/it]                                                                                   [main:140] step=1 plunger: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  21%|██        | 26/124 [02:31<08:06,  4.96s/it]VStar natural-error oracle repair:  22%|██▏       | 27/124 [02:31<08:15,  5.10s/it]                                                                                   [main:141] step=1 white statue: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  22%|██▏       | 27/124 [02:36<08:15,  5.10s/it]VStar natural-error oracle repair:  23%|██▎       | 28/124 [02:36<08:18,  5.19s/it]                                                                                   [main:144] step=1 blue umbrella: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  23%|██▎       | 28/124 [02:43<08:18,  5.19s/it]VStar natural-error oracle repair:  25%|██▌       | 31/124 [02:43<05:36,  3.62s/it]                                                                                   [main:145] step=1 dog: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  25%|██▌       | 31/124 [02:49<05:36,  3.62s/it]VStar natural-error oracle repair:  26%|██▌       | 32/124 [02:49<06:18,  4.12s/it]                                                                                   [main:146] step=2 switch: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  26%|██▌       | 32/124 [02:57<06:18,  4.12s/it]VStar natural-error oracle repair:  27%|██▋       | 33/124 [02:57<07:38,  5.03s/it]                                                                                   [main:147] step=1 red vehicle: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  27%|██▋       | 33/124 [03:04<07:38,  5.03s/it]VStar natural-error oracle repair:  27%|██▋       | 34/124 [03:04<07:59,  5.33s/it]                                                                                   [main:148] step=1 shovel: IoU(q,GT)=0.445 -> IoU(r,GT)=0.445; pred 0->0, correct=True
+VStar natural-error oracle repair:  27%|██▋       | 34/124 [03:09<07:59,  5.33s/it]VStar natural-error oracle repair:  28%|██▊       | 35/124 [03:09<08:01,  5.41s/it]                                                                                   [main:149] step=1 motorcycle: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  28%|██▊       | 35/124 [03:15<08:01,  5.41s/it]VStar natural-error oracle repair:  29%|██▉       | 36/124 [03:15<08:16,  5.65s/it]                                                                                   [main:150] step=1 suitcase: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  29%|██▉       | 36/124 [03:21<08:16,  5.65s/it]VStar natural-error oracle repair:  30%|██▉       | 37/124 [03:21<08:06,  5.59s/it]                                                                                   [main:151] step=1 red chair: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  30%|██▉       | 37/124 [03:26<08:06,  5.59s/it]VStar natural-error oracle repair:  31%|███       | 38/124 [03:26<07:57,  5.55s/it]                                                                                   [main:152] step=1 faucet: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  31%|███       | 38/124 [03:33<07:57,  5.55s/it]VStar natural-error oracle repair:  31%|███▏      | 39/124 [03:33<08:11,  5.78s/it]                                                                                   [main:153] step=1 red truck: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  31%|███▏      | 39/124 [03:39<08:11,  5.78s/it]VStar natural-error oracle repair:  32%|███▏      | 40/124 [03:39<08:22,  5.98s/it]                                                                                   [main:156] step=1 cone: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  32%|███▏      | 40/124 [03:45<08:22,  5.98s/it]VStar natural-error oracle repair:  35%|███▍      | 43/124 [03:45<04:55,  3.65s/it]                                                                                   [main:159] step=2 motorcycle: IoU(q,GT)=0.139 -> IoU(r,GT)=0.139; pred 1->1, correct=False
+VStar natural-error oracle repair:  35%|███▍      | 43/124 [03:53<04:55,  3.65s/it]VStar natural-error oracle repair:  37%|███▋      | 46/124 [03:53<04:17,  3.30s/it]                                                                                   [main:161] step=1 baby carriage: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  37%|███▋      | 46/124 [03:59<04:17,  3.30s/it]VStar natural-error oracle repair:  39%|███▊      | 48/124 [03:59<04:07,  3.26s/it]                                                                                   [main:164] step=2 yellow car: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  39%|███▊      | 48/124 [04:08<04:07,  3.26s/it]VStar natural-error oracle repair:  41%|████      | 51/124 [04:08<03:48,  3.13s/it]                                                                                   [main:166] step=1 carton: IoU(q,GT)=0.010 -> IoU(r,GT)=0.010; pred 0->0, correct=True
+VStar natural-error oracle repair:  41%|████      | 51/124 [04:14<03:48,  3.13s/it]VStar natural-error oracle repair:  43%|████▎     | 53/124 [04:14<03:42,  3.13s/it]                                                                                   [main:168] step=1 blue bicycle: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  43%|████▎     | 53/124 [04:21<03:42,  3.13s/it]VStar natural-error oracle repair:  44%|████▍     | 55/124 [04:21<03:36,  3.14s/it]                                                                                   [main:169] step=1 guitar: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  44%|████▍     | 55/124 [04:27<03:36,  3.14s/it]VStar natural-error oracle repair:  45%|████▌     | 56/124 [04:27<04:06,  3.62s/it]                                                                                   [main:170] ERROR: RuntimeError: one-shot repair ended before a replacement coordinate
+VStar natural-error oracle repair:  45%|████▌     | 56/124 [05:14<04:06,  3.62s/it]VStar natural-error oracle repair:  46%|████▌     | 57/124 [05:14<13:24, 12.01s/it]                                                                                   [main:171] step=1 blue umbrella: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  46%|████▌     | 57/124 [05:21<13:24, 12.01s/it]VStar natural-error oracle repair:  47%|████▋     | 58/124 [05:21<11:53, 10.82s/it]                                                                                   [main:172] step=1 wagon: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  47%|████▋     | 58/124 [05:27<11:53, 10.82s/it]VStar natural-error oracle repair:  48%|████▊     | 59/124 [05:27<10:33,  9.75s/it]                                                                                   [main:174] step=1 life buoy: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  48%|████▊     | 59/124 [05:33<10:33,  9.75s/it]VStar natural-error oracle repair:  49%|████▉     | 61/124 [05:33<07:27,  7.11s/it]                                                                                   [main:175] step=1 purple umbrella: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  49%|████▉     | 61/124 [05:40<07:27,  7.11s/it]VStar natural-error oracle repair:  50%|█████     | 62/124 [05:40<07:12,  6.98s/it]                                                                                   [main:176] step=1 folded chair: IoU(q,GT)=0.436 -> IoU(r,GT)=0.436; pred 0->0, correct=True
+VStar natural-error oracle repair:  50%|█████     | 62/124 [05:45<07:12,  6.98s/it]VStar natural-error oracle repair:  51%|█████     | 63/124 [05:45<06:43,  6.61s/it]                                                                                   [main:177] step=2 soccer ball: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  51%|█████     | 63/124 [05:53<06:43,  6.61s/it]VStar natural-error oracle repair:  52%|█████▏    | 64/124 [05:53<06:53,  6.88s/it]                                                                                   [main:178] step=1 cyclist: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  52%|█████▏    | 64/124 [05:59<06:53,  6.88s/it]VStar natural-error oracle repair:  52%|█████▏    | 65/124 [05:59<06:36,  6.72s/it]                                                                                   [main:179] step=1 cyclist: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  52%|█████▏    | 65/124 [06:06<06:36,  6.72s/it]VStar natural-error oracle repair:  53%|█████▎    | 66/124 [06:06<06:25,  6.64s/it]                                                                                   [main:180] step=1 yellow van: IoU(q,GT)=0.072 -> IoU(r,GT)=0.072; pred 1->1, correct=False
+VStar natural-error oracle repair:  53%|█████▎    | 66/124 [06:12<06:25,  6.64s/it]VStar natural-error oracle repair:  54%|█████▍    | 67/124 [06:12<06:13,  6.56s/it]                                                                                   [main:181] step=1 white balloon: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  54%|█████▍    | 67/124 [06:18<06:13,  6.56s/it]VStar natural-error oracle repair:  55%|█████▍    | 68/124 [06:18<06:02,  6.47s/it]                                                                                   [main:182] step=1 black vehicle: IoU(q,GT)=0.400 -> IoU(r,GT)=0.400; pred 0->0, correct=True
+VStar natural-error oracle repair:  55%|█████▍    | 68/124 [06:25<06:02,  6.47s/it]VStar natural-error oracle repair:  56%|█████▌    | 69/124 [06:25<05:56,  6.48s/it]                                                                                   [main:183] step=1 water bottle: IoU(q,GT)=0.358 -> IoU(r,GT)=0.358; pred 1->1, correct=False
+VStar natural-error oracle repair:  56%|█████▌    | 69/124 [06:31<05:56,  6.48s/it]VStar natural-error oracle repair:  56%|█████▋    | 70/124 [06:31<05:48,  6.46s/it]                                                                                   [main:184] step=1 cyclist: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  56%|█████▋    | 70/124 [06:38<05:48,  6.46s/it]VStar natural-error oracle repair:  57%|█████▋    | 71/124 [06:38<05:49,  6.59s/it]                                                                                   [main:185] step=3 volleyball: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  57%|█████▋    | 71/124 [06:48<05:49,  6.59s/it]VStar natural-error oracle repair:  58%|█████▊    | 72/124 [06:48<06:26,  7.43s/it]                                                                                   [main:187] step=1 blue van: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  58%|█████▊    | 72/124 [06:54<06:26,  7.43s/it]VStar natural-error oracle repair:  60%|█████▉    | 74/124 [06:54<04:32,  5.45s/it]                                                                                   [main:188] step=1 pink umbrella: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  60%|█████▉    | 74/124 [07:01<04:32,  5.45s/it]VStar natural-error oracle repair:  60%|██████    | 75/124 [07:01<04:43,  5.79s/it]                                                                                   [main:189] step=1 red stool: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  60%|██████    | 75/124 [07:07<04:43,  5.79s/it]VStar natural-error oracle repair:  61%|██████▏   | 76/124 [07:07<04:47,  5.99s/it]                                                                                   [main:190] step=1 white chair: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  61%|██████▏   | 76/124 [07:13<04:47,  5.99s/it]VStar natural-error oracle repair:  62%|██████▏   | 77/124 [07:13<04:35,  5.85s/it]                                                                                   [OCR:sa_17063] step=1 traffic light: IoU(q,GT)=0.371 -> IoU(r,GT)=0.371; pred 1->1, correct=False
+VStar natural-error oracle repair:  62%|██████▏   | 77/124 [07:19<04:35,  5.85s/it]VStar natural-error oracle repair:  64%|██████▎   | 79/124 [07:19<03:29,  4.66s/it]                                                                                   [OCR:sa_21796] step=1 speed sign: IoU(q,GT)=0.095 -> IoU(r,GT)=0.095; pred 1->1, correct=False
+VStar natural-error oracle repair:  64%|██████▎   | 79/124 [07:25<03:29,  4.66s/it]VStar natural-error oracle repair:  65%|██████▌   | 81/124 [07:25<02:55,  4.08s/it]                                                                                   [OCR:sa_39432] step=1 white board: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  65%|██████▌   | 81/124 [07:32<02:55,  4.08s/it]VStar natural-error oracle repair:  68%|██████▊   | 84/124 [07:32<02:07,  3.19s/it]                                                                                   [OCR:sa_41985] step=1 screen: IoU(q,GT)=0.383 -> IoU(r,GT)=0.383; pred 2->2, correct=False
+VStar natural-error oracle repair:  68%|██████▊   | 84/124 [07:38<02:07,  3.19s/it]VStar natural-error oracle repair:  70%|███████   | 87/124 [07:38<01:42,  2.77s/it]                                                                                   [OCR:sa_43283] step=1 speed sign: IoU(q,GT)=0.002 -> IoU(r,GT)=0.002; pred 2->2, correct=False
+VStar natural-error oracle repair:  70%|███████   | 87/124 [07:44<01:42,  2.77s/it]VStar natural-error oracle repair:  73%|███████▎  | 90/124 [07:44<01:26,  2.54s/it]                                                                                   [OCR:sa_47747] step=1 green screen: IoU(q,GT)=0.098 -> IoU(r,GT)=0.052; pred 0->0, correct=True
+VStar natural-error oracle repair:  73%|███████▎  | 90/124 [07:51<01:26,  2.54s/it]VStar natural-error oracle repair:  74%|███████▍  | 92/124 [07:51<01:26,  2.71s/it]                                                                                   [OCR:sa_50038] step=1 orange board: IoU(q,GT)=0.351 -> IoU(r,GT)=0.351; pred 2->2, correct=False
+VStar natural-error oracle repair:  74%|███████▍  | 92/124 [07:57<01:26,  2.71s/it]VStar natural-error oracle repair:  75%|███████▌  | 93/124 [07:57<01:41,  3.26s/it]                                                                                   [OCR:sa_58860] step=1 LED screen: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  75%|███████▌  | 93/124 [08:03<01:41,  3.26s/it]VStar natural-error oracle repair:  76%|███████▌  | 94/124 [08:03<01:55,  3.84s/it]                                                                                   [OCR:sa_60634] step=1 blue signpost: IoU(q,GT)=0.035 -> IoU(r,GT)=0.035; pred 0->0, correct=True
+VStar natural-error oracle repair:  76%|███████▌  | 94/124 [08:11<01:55,  3.84s/it]VStar natural-error oracle repair:  77%|███████▋  | 95/124 [08:11<02:10,  4.50s/it]                                                                                   [OCR:sa_82003] step=1 vending machine: IoU(q,GT)=0.266 -> IoU(r,GT)=0.218; pred 0->0, correct=True
+VStar natural-error oracle repair:  77%|███████▋  | 95/124 [08:18<02:10,  4.50s/it]VStar natural-error oracle repair:  81%|████████  | 100/124 [08:18<01:03,  2.66s/it]                                                                                    [OCR:sa_88890] step=1 airship: IoU(q,GT)=0.273 -> IoU(r,GT)=0.273; pred 0->0, correct=True
+VStar natural-error oracle repair:  81%|████████  | 100/124 [08:24<01:03,  2.66s/it]VStar natural-error oracle repair:  81%|████████▏ | 101/124 [08:24<01:13,  3.21s/it]                                                                                    [OCR:textvqa_0] step=1 blue board: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  81%|████████▏ | 101/124 [08:30<01:13,  3.21s/it]VStar natural-error oracle repair:  85%|████████▍ | 105/124 [08:30<00:47,  2.48s/it]                                                                                    [OCR:textvqa_1] step=1 notice board: IoU(q,GT)=0.326 -> IoU(r,GT)=0.326; pred 0->0, correct=True
+VStar natural-error oracle repair:  85%|████████▍ | 105/124 [08:37<00:47,  2.48s/it]VStar natural-error oracle repair:  85%|████████▌ | 106/124 [08:37<00:56,  3.12s/it]                                                                                    [GPT4V-hard:0] step=1 advertising board: IoU(q,GT)=0.348 -> IoU(r,GT)=0.348; pred 1->1, correct=False
+VStar natural-error oracle repair:  85%|████████▌ | 106/124 [08:45<00:56,  3.12s/it]VStar natural-error oracle repair:  87%|████████▋ | 108/124 [08:45<00:53,  3.36s/it]                                                                                    [GPT4V-hard:5] step=1 black mug: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  87%|████████▋ | 108/124 [08:53<00:53,  3.36s/it]VStar natural-error oracle repair:  90%|█████████ | 112/124 [08:53<00:32,  2.73s/it]                                                                                    [GPT4V-hard:7] step=1 glass cup: IoU(q,GT)=0.179 -> IoU(r,GT)=0.179; pred 0->0, correct=True
+VStar natural-error oracle repair:  90%|█████████ | 112/124 [08:59<00:32,  2.73s/it]VStar natural-error oracle repair:  91%|█████████ | 113/124 [08:59<00:34,  3.14s/it]                                                                                    [GPT4V-hard:12] step=1 mug: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  91%|█████████ | 113/124 [09:07<00:34,  3.14s/it]VStar natural-error oracle repair:  94%|█████████▎| 116/124 [09:07<00:24,  3.03s/it]                                                                                    [GPT4V-hard:14] step=1 black framed board: IoU(q,GT)=0.013 -> IoU(r,GT)=0.013; pred 0->0, correct=True
+VStar natural-error oracle repair:  94%|█████████▎| 116/124 [09:22<00:24,  3.03s/it]VStar natural-error oracle repair:  95%|█████████▌| 118/124 [09:22<00:24,  4.09s/it]                                                                                    [GPT4V-hard:16] step=1 red signicade: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 0->0, correct=True
+VStar natural-error oracle repair:  95%|█████████▌| 118/124 [09:29<00:24,  4.09s/it]VStar natural-error oracle repair:  97%|█████████▋| 120/124 [09:29<00:16,  4.02s/it]                                                                                    [GPT4V-hard:17] step=1 street nameplate: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 2->2, correct=False
+VStar natural-error oracle repair:  97%|█████████▋| 120/124 [09:35<00:16,  4.02s/it]VStar natural-error oracle repair:  98%|█████████▊| 121/124 [09:35<00:12,  4.29s/it]                                                                                    [GPT4V-hard:18] step=1 dog: IoU(q,GT)=0.007 -> IoU(r,GT)=0.007; pred 1->1, correct=False
+VStar natural-error oracle repair:  98%|█████████▊| 121/124 [09:40<00:12,  4.29s/it]VStar natural-error oracle repair:  98%|█████████▊| 122/124 [09:40<00:08,  4.49s/it]                                                                                    [GPT4V-hard:19] step=1 little doll: IoU(q,GT)=0.000 -> IoU(r,GT)=0.000; pred 1->1, correct=False
+VStar natural-error oracle repair:  98%|█████████▊| 122/124 [09:48<00:08,  4.49s/it]VStar natural-error oracle repair:  99%|█████████▉| 123/124 [09:48<00:05,  5.13s/it]                                                                                    [GPT4V-hard:21] step=2 bag of bottles: IoU(q,GT)=0.209 -> IoU(r,GT)=0.209; pred 0->0, correct=True
+VStar natural-error oracle repair:  99%|█████████▉| 123/124 [09:59<00:05,  5.13s/it]VStar natural-error oracle repair: 100%|██████████| 124/124 [09:59<00:00,  6.56s/it]VStar natural-error oracle repair: 100%|██████████| 124/124 [09:59<00:00,  4.84s/it]
+Verifier event log: output/vstar/natural_error_repair/text_only_concise/padding_fix_v1/verifier_events.jsonl
+{
+  "run_id": "padding_fix_v1",
+  "total_records": 238,
+  "successful_records": 237,
+  "error_records": 1,
+  "all_samples": {
+    "samples": 237,
+    "baseline_correct_count": 138,
+    "baseline_accuracy": 0.5822784810126582,
+    "repair_correct_count": 138,
+    "repair_accuracy": 0.5822784810126582,
+    "repair_minus_baseline": 0.0,
+    "answer_changed_count": 2,
+    "correctness_transitions": {
+      "correct_to_wrong": 1,
+      "wrong_to_correct": 1,
+      "correct_to_correct": 137,
+      "wrong_to_wrong": 98
+    },
+    "mcnemar_exact_two_sided_pvalue": 1.0
+  },
+  "strict_matched_subset": {
+    "samples": 197,
+    "baseline_correct_count": 114,
+    "baseline_accuracy": 0.5786802030456852,
+    "repair_correct_count": 114,
+    "repair_accuracy": 0.5786802030456852,
+    "repair_minus_baseline": 0.0,
+    "answer_changed_count": 2,
+    "correctness_transitions": {
+      "correct_to_wrong": 1,
+      "wrong_to_correct": 1,
+      "correct_to_correct": 113,
+      "wrong_to_wrong": 82
+    },
+    "mcnemar_exact_two_sided_pvalue": 1.0
+  },
+  "checker_triggered_subset": {
+    "samples": 170,
+    "baseline_correct_count": 98,
+    "baseline_accuracy": 0.5764705882352941,
+    "repair_correct_count": 98,
+    "repair_accuracy": 0.5764705882352941,
+    "repair_minus_baseline": 0.0,
+    "answer_changed_count": 2,
+    "correctness_transitions": {
+      "correct_to_wrong": 1,
+      "wrong_to_correct": 1,
+      "correct_to_correct": 97,
+      "wrong_to_wrong": 71
+    },
+    "mcnemar_exact_two_sided_pvalue": 1.0,
+    "grounding": {
+      "samples": 170,
+      "exact_copy_count": 145,
+      "exact_copy_rate": 0.8529411764705882,
+      "coordinate_changed_count": 25,
+      "coordinate_changed_rate": 0.1470588235294118,
+      "mean_baseline_iou_to_gt": 0.07338054746036442,
+      "mean_replacement_iou_to_gt": 0.07297855971755242,
+      "mean_iou_gain": -0.0004019877428120183,
+      "iou_improved_count": 1,
+      "iou_improved_rate": 0.0058823529411764705,
+      "replacement_iou_ge_0_3_count": 20,
+      "replacement_iou_ge_0_3_rate": 0.11764705882352941,
+      "replacement_iou_ge_0_5_count": 0,
+      "replacement_iou_ge_0_5_rate": 0.0,
+      "crossed_to_iou_ge_0_3_count": 0,
+      "crossed_to_iou_ge_0_5_count": 0,
+      "mean_baseline_gt_coverage": 0.18271525711704753,
+      "mean_replacement_gt_coverage": 0.18428812892649224
+    }
+  },
+  "no_trigger_passthrough_subset": {
+    "samples": 67,
+    "baseline_correct_count": 40,
+    "baseline_accuracy": 0.5970149253731343,
+    "repair_correct_count": 40,
+    "repair_accuracy": 0.5970149253731343,
+    "repair_minus_baseline": 0.0,
+    "answer_changed_count": 0,
+    "correctness_transitions": {
+      "correct_to_wrong": 0,
+      "wrong_to_correct": 0,
+      "correct_to_correct": 40,
+      "wrong_to_wrong": 27
+    },
+    "mcnemar_exact_two_sided_pvalue": 1.0
+  },
+  "checker_coverage": {
+    "samples_with_eligible_coordinate": 197,
+    "samples_with_natural_error": 170,
+    "samples_without_natural_error": 67,
+    "total_coordinate_count": 627,
+    "eligible_coordinate_count": 338,
+    "natural_error_coordinate_count": 296
+  },
+  "by_selected_coordinate_index": {
+    "1": {
+      "samples": 158,
+      "baseline_correct_count": 92,
+      "baseline_accuracy": 0.5822784810126582,
+      "repair_correct_count": 92,
+      "repair_accuracy": 0.5822784810126582,
+      "repair_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 92,
+        "wrong_to_wrong": 66
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "grounding": {
+        "samples": 158,
+        "exact_copy_count": 137,
+        "exact_copy_rate": 0.8670886075949367,
+        "coordinate_changed_count": 21,
+        "coordinate_changed_rate": 0.13291139240506333,
+        "mean_baseline_iou_to_gt": 0.07674565948468244,
+        "mean_replacement_iou_to_gt": 0.07600440376263864,
+        "mean_iou_gain": -0.000741255722043805,
+        "iou_improved_count": 0,
+        "iou_improved_rate": 0.0,
+        "replacement_iou_ge_0_3_count": 20,
+        "replacement_iou_ge_0_3_rate": 0.12658227848101267,
+        "replacement_iou_ge_0_5_count": 0,
+        "replacement_iou_ge_0_5_rate": 0.0,
+        "crossed_to_iou_ge_0_3_count": 0,
+        "crossed_to_iou_ge_0_5_count": 0,
+        "mean_baseline_gt_coverage": 0.18979442807483546,
+        "mean_replacement_gt_coverage": 0.188565628999311
+      }
+    },
+    "2": {
+      "samples": 10,
+      "baseline_correct_count": 5,
+      "baseline_accuracy": 0.5,
+      "repair_correct_count": 4,
+      "repair_accuracy": 0.4,
+      "repair_minus_baseline": -0.1,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 4,
+        "wrong_to_wrong": 5
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "grounding": {
+        "samples": 10,
+        "exact_copy_count": 8,
+        "exact_copy_rate": 0.8,
+        "coordinate_changed_count": 2,
+        "coordinate_changed_rate": 0.19999999999999996,
+        "mean_baseline_iou_to_gt": 0.03488788696821246,
+        "mean_replacement_iou_to_gt": 0.03488788696821246,
+        "mean_iou_gain": 0.0,
+        "iou_improved_count": 0,
+        "iou_improved_rate": 0.0,
+        "replacement_iou_ge_0_3_count": 0,
+        "replacement_iou_ge_0_3_rate": 0.0,
+        "replacement_iou_ge_0_5_count": 0,
+        "replacement_iou_ge_0_5_rate": 0.0,
+        "crossed_to_iou_ge_0_3_count": 0,
+        "crossed_to_iou_ge_0_5_count": 0,
+        "mean_baseline_gt_coverage": 0.10740740740740742,
+        "mean_replacement_gt_coverage": 0.10740740740740742
+      }
+    },
+    "3": {
+      "samples": 2,
+      "baseline_correct_count": 1,
+      "baseline_accuracy": 0.5,
+      "repair_correct_count": 2,
+      "repair_accuracy": 1.0,
+      "repair_minus_baseline": 0.5,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 1,
+        "correct_to_correct": 1,
+        "wrong_to_wrong": 0
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "grounding": {
+        "samples": 2,
+        "exact_copy_count": 0,
+        "exact_copy_rate": 0.0,
+        "coordinate_changed_count": 2,
+        "coordinate_changed_rate": 1.0,
+        "mean_baseline_iou_to_gt": 0.0,
+        "mean_replacement_iou_to_gt": 0.02439024390243903,
+        "mean_iou_gain": 0.02439024390243903,
+        "iou_improved_count": 1,
+        "iou_improved_rate": 0.5,
+        "replacement_iou_ge_0_3_count": 0,
+        "replacement_iou_ge_0_3_rate": 0.0,
+        "replacement_iou_ge_0_5_count": 0,
+        "replacement_iou_ge_0_5_rate": 0.0,
+        "crossed_to_iou_ge_0_3_count": 0,
+        "crossed_to_iou_ge_0_5_count": 0,
+        "mean_baseline_gt_coverage": 0.0,
+        "mean_replacement_gt_coverage": 0.23076923076923173
+      }
+    }
+  },
+  "by_selected_gt_box_area": {
+    "medium_or_large_ge_0.01": {
+      "samples": 1,
+      "baseline_correct_count": 0,
+      "baseline_accuracy": 0.0,
+      "repair_correct_count": 0,
+      "repair_accuracy": 0.0,
+      "repair_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 0,
+        "wrong_to_wrong": 1
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "grounding": {
+        "samples": 1,
+        "exact_copy_count": 1,
+        "exact_copy_rate": 1.0,
+        "coordinate_changed_count": 0,
+        "coordinate_changed_rate": 0.0,
+        "mean_baseline_iou_to_gt": 0.38281481481481494,
+        "mean_replacement_iou_to_gt": 0.38281481481481494,
+        "mean_iou_gain": 0.0,
+        "iou_improved_count": 0,
+        "iou_improved_rate": 0.0,
+        "replacement_iou_ge_0_3_count": 1,
+        "replacement_iou_ge_0_3_rate": 1.0,
+        "replacement_iou_ge_0_5_count": 0,
+        "replacement_iou_ge_0_5_rate": 0.0,
+        "crossed_to_iou_ge_0_3_count": 0,
+        "crossed_to_iou_ge_0_5_count": 0,
+        "mean_baseline_gt_coverage": 0.382814814814815,
+        "mean_replacement_gt_coverage": 0.382814814814815
+      }
+    },
+    "small_0.001_to_0.01": {
+      "samples": 42,
+      "baseline_correct_count": 27,
+      "baseline_accuracy": 0.6428571428571429,
+      "repair_correct_count": 26,
+      "repair_accuracy": 0.6190476190476191,
+      "repair_minus_baseline": -0.023809523809523808,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 26,
+        "wrong_to_wrong": 15
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "grounding": {
+        "samples": 42,
+        "exact_copy_count": 36,
+        "exact_copy_rate": 0.8571428571428571,
+        "coordinate_changed_count": 6,
+        "coordinate_changed_rate": 0.1428571428571429,
+        "mean_baseline_iou_to_gt": 0.15061496035628685,
+        "mean_replacement_iou_to_gt": 0.1483836634332098,
+        "mean_iou_gain": -0.002231296923077043,
+        "iou_improved_count": 0,
+        "iou_improved_rate": 0.0,
+        "replacement_iou_ge_0_3_count": 14,
+        "replacement_iou_ge_0_3_rate": 0.3333333333333333,
+        "replacement_iou_ge_0_5_count": 0,
+        "replacement_iou_ge_0_5_rate": 0.0,
+        "crossed_to_iou_ge_0_3_count": 0,
+        "crossed_to_iou_ge_0_5_count": 0,
+        "mean_baseline_gt_coverage": 0.27485746758934565,
+        "mean_replacement_gt_coverage": 0.27576326469079493
+      }
+    },
+    "tiny_lt_0.001": {
+      "samples": 127,
+      "baseline_correct_count": 71,
+      "baseline_accuracy": 0.5590551181102362,
+      "repair_correct_count": 72,
+      "repair_accuracy": 0.5669291338582677,
+      "repair_minus_baseline": 0.007874015748031496,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 1,
+        "correct_to_correct": 71,
+        "wrong_to_wrong": 55
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "grounding": {
+        "samples": 127,
+        "exact_copy_count": 108,
+        "exact_copy_rate": 0.8503937007874016,
+        "coordinate_changed_count": 19,
+        "coordinate_changed_rate": 0.14960629921259838,
+        "mean_baseline_iou_to_gt": 0.04540196786207156,
+        "mean_replacement_iou_to_gt": 0.045601783251766,
+        "mean_iou_gain": 0.0001998153896944306,
+        "iou_improved_count": 1,
+        "iou_improved_rate": 0.007874015748031496,
+        "replacement_iou_ge_0_3_count": 5,
+        "replacement_iou_ge_0_3_rate": 0.03937007874015748,
+        "replacement_iou_ge_0_5_count": 0,
+        "replacement_iou_ge_0_5_rate": 0.0,
+        "crossed_to_iou_ge_0_3_count": 0,
+        "crossed_to_iou_ge_0_5_count": 0,
+        "mean_baseline_gt_coverage": 0.15066744296323423,
+        "mean_replacement_gt_coverage": 0.15247330697382266
+      }
+    }
+  },
+  "by_category": {
+    "GPT4V-hard": {
+      "all_samples": {
+        "samples": 17,
+        "baseline_correct_count": 10,
+        "baseline_accuracy": 0.5882352941176471,
+        "repair_correct_count": 10,
+        "repair_accuracy": 0.5882352941176471,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 0,
+        "correctness_transitions": {
+          "correct_to_wrong": 0,
+          "wrong_to_correct": 0,
+          "correct_to_correct": 10,
+          "wrong_to_wrong": 7
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0
+      },
+      "checker_triggered_subset": {
+        "samples": 10,
+        "baseline_correct_count": 6,
+        "baseline_accuracy": 0.6,
+        "repair_correct_count": 6,
+        "repair_accuracy": 0.6,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 0,
+        "correctness_transitions": {
+          "correct_to_wrong": 0,
+          "wrong_to_correct": 0,
+          "correct_to_correct": 6,
+          "wrong_to_wrong": 4
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0,
+        "grounding": {
+          "samples": 10,
+          "exact_copy_count": 10,
+          "exact_copy_rate": 1.0,
+          "coordinate_changed_count": 0,
+          "coordinate_changed_rate": 0.0,
+          "mean_baseline_iou_to_gt": 0.07559814575747698,
+          "mean_replacement_iou_to_gt": 0.07559814575747698,
+          "mean_iou_gain": 0.0,
+          "iou_improved_count": 0,
+          "iou_improved_rate": 0.0,
+          "replacement_iou_ge_0_3_count": 1,
+          "replacement_iou_ge_0_3_rate": 0.1,
+          "replacement_iou_ge_0_5_count": 0,
+          "replacement_iou_ge_0_5_rate": 0.0,
+          "crossed_to_iou_ge_0_3_count": 0,
+          "crossed_to_iou_ge_0_5_count": 0,
+          "mean_baseline_gt_coverage": 0.2611447811447812,
+          "mean_replacement_gt_coverage": 0.2611447811447812
+        }
+      }
+    },
+    "OCR": {
+      "all_samples": {
+        "samples": 30,
+        "baseline_correct_count": 14,
+        "baseline_accuracy": 0.4666666666666667,
+        "repair_correct_count": 14,
+        "repair_accuracy": 0.4666666666666667,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 0,
+        "correctness_transitions": {
+          "correct_to_wrong": 0,
+          "wrong_to_correct": 0,
+          "correct_to_correct": 14,
+          "wrong_to_wrong": 16
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0
+      },
+      "checker_triggered_subset": {
+        "samples": 13,
+        "baseline_correct_count": 5,
+        "baseline_accuracy": 0.38461538461538464,
+        "repair_correct_count": 5,
+        "repair_accuracy": 0.38461538461538464,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 0,
+        "correctness_transitions": {
+          "correct_to_wrong": 0,
+          "wrong_to_correct": 0,
+          "correct_to_correct": 5,
+          "wrong_to_wrong": 8
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0,
+        "grounding": {
+          "samples": 13,
+          "exact_copy_count": 10,
+          "exact_copy_rate": 0.7692307692307693,
+          "coordinate_changed_count": 3,
+          "coordinate_changed_rate": 0.23076923076923073,
+          "mean_baseline_iou_to_gt": 0.16931474474142963,
+          "mean_replacement_iou_to_gt": 0.16210593929764225,
+          "mean_iou_gain": -0.00720880544378737,
+          "iou_improved_count": 0,
+          "iou_improved_rate": 0.0,
+          "replacement_iou_ge_0_3_count": 4,
+          "replacement_iou_ge_0_3_rate": 0.3076923076923077,
+          "replacement_iou_ge_0_5_count": 0,
+          "replacement_iou_ge_0_5_rate": 0.0,
+          "crossed_to_iou_ge_0_3_count": 0,
+          "crossed_to_iou_ge_0_5_count": 0,
+          "mean_baseline_gt_coverage": 0.31584781051472244,
+          "mean_replacement_gt_coverage": 0.3187742319194048
+        }
+      }
+    },
+    "direct_attributes": {
+      "all_samples": {
+        "samples": 115,
+        "baseline_correct_count": 65,
+        "baseline_accuracy": 0.5652173913043478,
+        "repair_correct_count": 65,
+        "repair_accuracy": 0.5652173913043478,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 0,
+        "correctness_transitions": {
+          "correct_to_wrong": 0,
+          "wrong_to_correct": 0,
+          "correct_to_correct": 65,
+          "wrong_to_wrong": 50
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0
+      },
+      "checker_triggered_subset": {
+        "samples": 89,
+        "baseline_correct_count": 50,
+        "baseline_accuracy": 0.5617977528089888,
+        "repair_correct_count": 50,
+        "repair_accuracy": 0.5617977528089888,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 0,
+        "correctness_transitions": {
+          "correct_to_wrong": 0,
+          "wrong_to_correct": 0,
+          "correct_to_correct": 50,
+          "wrong_to_wrong": 39
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0,
+        "grounding": {
+          "samples": 89,
+          "exact_copy_count": 76,
+          "exact_copy_rate": 0.8539325842696629,
+          "coordinate_changed_count": 13,
+          "coordinate_changed_rate": 0.1460674157303371,
+          "mean_baseline_iou_to_gt": 0.07606339506233609,
+          "mean_replacement_iou_to_gt": 0.07580042951948571,
+          "mean_iou_gain": -0.00026296554285039743,
+          "iou_improved_count": 0,
+          "iou_improved_rate": 0.0,
+          "replacement_iou_ge_0_3_count": 10,
+          "replacement_iou_ge_0_3_rate": 0.11235955056179775,
+          "replacement_iou_ge_0_5_count": 0,
+          "replacement_iou_ge_0_5_rate": 0.0,
+          "crossed_to_iou_ge_0_3_count": 0,
+          "crossed_to_iou_ge_0_5_count": 0,
+          "mean_baseline_gt_coverage": 0.20400314856212895,
+          "mean_replacement_gt_coverage": 0.2013942302228735
+        }
+      }
+    },
+    "relative_position": {
+      "all_samples": {
+        "samples": 75,
+        "baseline_correct_count": 49,
+        "baseline_accuracy": 0.6533333333333333,
+        "repair_correct_count": 49,
+        "repair_accuracy": 0.6533333333333333,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 2,
+        "correctness_transitions": {
+          "correct_to_wrong": 1,
+          "wrong_to_correct": 1,
+          "correct_to_correct": 48,
+          "wrong_to_wrong": 25
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0
+      },
+      "checker_triggered_subset": {
+        "samples": 58,
+        "baseline_correct_count": 37,
+        "baseline_accuracy": 0.6379310344827587,
+        "repair_correct_count": 37,
+        "repair_accuracy": 0.6379310344827587,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 2,
+        "correctness_transitions": {
+          "correct_to_wrong": 1,
+          "wrong_to_correct": 1,
+          "correct_to_correct": 36,
+          "wrong_to_wrong": 20
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0,
+        "grounding": {
+          "samples": 58,
+          "exact_copy_count": 49,
+          "exact_copy_rate": 0.8448275862068966,
+          "coordinate_changed_count": 9,
+          "coordinate_changed_rate": 0.15517241379310343,
+          "mean_baseline_iou_to_gt": 0.04737892704311525,
+          "mean_replacement_iou_to_gt": 0.0482199699363028,
+          "mean_iou_gain": 0.0008410428931875527,
+          "iou_improved_count": 1,
+          "iou_improved_rate": 0.017241379310344827,
+          "replacement_iou_ge_0_3_count": 5,
+          "replacement_iou_ge_0_3_rate": 0.08620689655172414,
+          "replacement_iou_ge_0_5_count": 0,
+          "replacement_iou_ge_0_5_rate": 0.0,
+          "crossed_to_iou_ge_0_3_count": 0,
+          "crossed_to_iou_ge_0_5_count": 0,
+          "mean_baseline_gt_coverage": 0.10668696792636896,
+          "mean_replacement_gt_coverage": 0.11464452760806661
+        }
+      }
+    }
+  },
+  "settings": {
+    "mode": "first_natural_baseline_error_one_shot_repair",
+    "baseline_results": "output/vstar/online_oracle/full_238_padding_fix/results.jsonl",
+    "repair_mode": "concise_typed_feedback",
+    "sandbox_refbind_mode": "text_only",
+    "checker_verdict": "misaligned",
+    "checker_reason": "wrong_object",
+    "checker_confidence": 1.0,
+    "iou_threshold": 0.5,
+    "selection_policy": "first_strictly_matched_coordinate_below_threshold",
+    "unmatched_policy": "not_applicable_and_unchanged",
+    "no_trigger_policy": "baseline_passthrough",
+    "replacement_second_verification": false,
+    "later_coordinate_verification": false,
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "likelihood_reduction": "mean",
+    "context_window_tokens": 48
+  }
+}
+Per-example results: output/vstar/natural_error_repair/text_only_concise/padding_fix_v1/results.jsonl
+Summary: output/vstar/natural_error_repair/text_only_concise/padding_fix_v1/results.summary.json

@@ -398,8 +398,8 @@ class VerifierController:
         if (lookup.missing_oracle_record or lookup.oracle_candidate_mismatch
                 or result.verdict != 'misaligned' or result.reason != 'wrong_object'):
             raise RuntimeError(
-                'one-shot random intervention requires a matching stored '
-                'misaligned/wrong_object oracle record'
+                'one-shot repair requires a matching misaligned/wrong_object '
+                'oracle decision for its initial candidate'
             )
 
         object_reference = self._object_reference(h_t_ids)
@@ -502,13 +502,23 @@ class VerifierController:
             self, reference_generated_ids: Sequence[int],
             selected_coordinate_index: int, random_box: Sequence[float],
             max_new_tokens: int = 1024,
-            temperature: float = 0.0) -> VerifierInferenceResult:
+            temperature: float = 0.0,
+            candidate_source: str = 'random_intervention',
+            oracle_target_box: Optional[Sequence[float]] = None,
+            target_object: Optional[str] = None) -> VerifierInferenceResult:
         """One-shot repair control: q is text-only and never binds in sandbox.
 
         This deliberately remains separate from the visual-aware repair method.
         Coordinates already present in H_t still follow ordinary REFbind during
         prefix replay; only the rejected q is not a valid coordinate span.
+
+        ``candidate_source`` affects diagnostics only.  Its default preserves
+        the historical random-intervention schema.
         """
+        if candidate_source not in {'random_intervention', 'natural_baseline_error'}:
+            raise ValueError(
+                'candidate_source must be random_intervention or natural_baseline_error'
+            )
         spans = find_coordinate_spans(reference_generated_ids, self.boc_token_id, self.eoc_token_id)
         selected_offset = int(selected_coordinate_index) - 1
         if not 0 <= selected_offset < len(spans):
@@ -524,8 +534,8 @@ class VerifierController:
         if (lookup.missing_oracle_record or lookup.oracle_candidate_mismatch
                 or result.verdict != 'misaligned' or result.reason != 'wrong_object'):
             raise RuntimeError(
-                'one-shot random intervention requires a matching stored '
-                'misaligned/wrong_object oracle record'
+                'one-shot repair requires a matching misaligned/wrong_object '
+                'oracle decision for its initial candidate'
             )
 
         object_reference = self._object_reference(h_t_ids)
@@ -541,14 +551,28 @@ class VerifierController:
         ]
         committed = h_t_ids + replacement_tokens
         continued_ids = self._continue_freely(committed, max_new_tokens, temperature)
+        is_natural_error = candidate_source == 'natural_baseline_error'
         event = {
             'sample_id': self.sample_id,
-            'mode': 'one_shot_reference_random_box_repair_text_only_q',
+            'mode': (
+                'one_shot_natural_error_repair_text_only_q'
+                if is_natural_error else
+                'one_shot_reference_random_box_repair_text_only_q'
+            ),
+            'candidate_source': candidate_source,
             'source_coordinate_index': int(selected_coordinate_index),
             'object_reference': object_reference,
+            'target_object': target_object,
             'reference_prefix_text': self.tokenizer.decode(h_t_ids, skip_special_tokens=False),
             'reference_box': self._box_list(self._box_from_span(reference_generated_ids, target_span)),
             'random_box': self._box_list(forced.candidate_box),
+            'natural_baseline_box': (
+                self._box_list(forced.candidate_box) if is_natural_error else None
+            ),
+            'oracle_target_box': (
+                None if oracle_target_box is None
+                else self._box_list(self._validate_box(oracle_target_box))
+            ),
             'forced_random_coordinate_text': self.tokenizer.decode(
                 forced.generated_ids[forced.candidate_span[0]:forced.candidate_span[1] + 1],
                 skip_special_tokens=False,
@@ -593,6 +617,24 @@ class VerifierController:
         return VerifierInferenceResult(
             self.tokenizer.decode(continued_ids, skip_special_tokens=False),
             continued_ids, 'ok', [event]
+        )
+
+    def run_one_shot_natural_error_repair_text_only_q(
+            self, reference_generated_ids: Sequence[int],
+            selected_coordinate_index: int, baseline_box: Sequence[float],
+            oracle_target_box: Sequence[float], target_object: str,
+            max_new_tokens: int = 1024,
+            temperature: float = 0.0) -> VerifierInferenceResult:
+        """Repair one strictly matched natural baseline error, then free-run."""
+        return self.run_one_shot_reference_repair_text_only_q(
+            reference_generated_ids=reference_generated_ids,
+            selected_coordinate_index=selected_coordinate_index,
+            random_box=baseline_box,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            candidate_source='natural_baseline_error',
+            oracle_target_box=oracle_target_box,
+            target_object=target_object,
         )
 
     def run_one_shot_reference_corruption(self, reference_generated_ids: Sequence[int],

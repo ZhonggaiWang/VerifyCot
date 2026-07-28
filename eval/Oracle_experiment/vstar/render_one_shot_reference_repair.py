@@ -10,7 +10,7 @@ Typical use::
 
     python eval/Oracle_experiment/vstar/render_one_shot_reference_repair.py \
       --results output/vstar/one_shot_reference_repair/text_only_sandbox/typed_feedback/20260728_113623/results.jsonl \
-      --manifest output/vstar/one_shot_reference_repair/full_238/manifest.jsonl \
+      --manifest output/vstar/one_shot_reference_repair/full_238_padding_fix/manifest.jsonl \
       --sample-id main:6 \
       --dataset-root /data/zhonggai/VStar \
       --output output/vstar/repair_renders/main_6.png
@@ -263,7 +263,8 @@ def parse_args() -> argparse.Namespace:
         help='One-shot repair results JSONL (or one JSON record). Defaults to text-only concise feedback.',
     )
     parser.add_argument(
-        '--manifest', default='output/vstar/one_shot_reference_repair/full_238/manifest.jsonl',
+        '--manifest',
+        default='output/vstar/one_shot_reference_repair/full_238_padding_fix/manifest.jsonl',
         help='Manifest paired with --results. Defaults to the full-238 one-shot manifest.',
     )
     parser.add_argument('--sample-id', required=True, help='For example: main:6.')

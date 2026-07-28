@@ -279,7 +279,7 @@ if [[ "$EXPERIMENT" == counterfactual ]]; then
     "$PERTURB_MODE" "$PERTURB_POSITION" "${PERTURB_INDEX:-null}" "$SELECTION_SEED" "$PERTURB_SEED" \
     "$IOU_MIN" "$IOU_MAX" "$PERTURB_BOX_MODE" "$MAX_NEW_TOKENS" "$FINAL_MAX_NEW_TOKENS" "$TEMPERATURE")
 else
-  settings=$(printf '{"dataset":"gqa_val_manifest","sharded":true,"oracle_mode":"online_explicit_target_oracle","context_window_tokens":%s,"max_new_tokens":%s,"final_max_new_tokens":%s,"temperature":%s}' \
+  settings=$(printf '{"dataset":"gqa_val_manifest","sharded":true,"oracle_mode":"online_explicit_target_oracle","oracle_box_coordinate_system":"normalized_xyxy_on_center_padded_square","context_window_tokens":%s,"max_new_tokens":%s,"final_max_new_tokens":%s,"temperature":%s}' \
     "$CONTEXT_WINDOW_TOKENS" "$MAX_NEW_TOKENS" "$FINAL_MAX_NEW_TOKENS" "$TEMPERATURE")
 fi
 cd "$PROJECT_ROOT"

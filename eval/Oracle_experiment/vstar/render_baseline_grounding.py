@@ -252,7 +252,7 @@ def render(record, dataset_root, tokenizer_path, output_path):
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        '--input', default='output/vstar/online_oracle/full_238/results.jsonl',
+        '--input', default='output/vstar/online_oracle/full_238_padding_fix/results.jsonl',
         help='Online-oracle result JSON/JSONL. Defaults to the full-238 run.',
     )
     parser.add_argument(

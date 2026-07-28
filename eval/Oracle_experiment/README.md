@@ -5,6 +5,26 @@ This directory is organised by dataset:
 - `vstar/`: VStar counterfactual, online-oracle, and box-audit scripts.
 - `gqa/`: GQA-val subset construction plus counterfactual and online-oracle evaluations.
 
+## VStar natural-error repair
+
+This experiment reads the untouched baseline trajectories saved by the
+full-238 online-oracle run, strictly rematches each baseline coordinate to an
+explicit GT target, and selects the first matched coordinate whose IoU is below
+the threshold.  The model receives a one-shot `misaligned/wrong_object`
+decision through concise text-only feedback; the GT coordinate itself is never
+shown to the model.  All later CoT tokens are freely generated.
+
+```bash
+CUDA_VISIBLE_DEVICES=0 conda run -n vocot python \
+  eval/Oracle_experiment/vstar/evaluate_natural_error_repair.py
+```
+
+The default output is timestamped below
+`output/vstar/natural_error_repair/text_only_concise/`.  Use
+`--sample-id main:9 --verbose` for a single-sample smoke test.  Samples without
+a strictly matchable natural error pass through unchanged and stay in the
+full-dataset denominator.
+
 ## GQA oracle subset
 
 The GQA scripts use the official `val_balanced_questions.json` and

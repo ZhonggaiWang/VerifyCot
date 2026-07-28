@@ -14,13 +14,18 @@ from PIL import Image
 from tqdm import tqdm
 
 from model.load_model import _build_inference_batch, load_model, online_oracle_infer
-from utils.coordinate_intervention import normalize_object_reference
+from utils.coordinate_intervention import (
+    normalize_object_reference,
+    normalized_box_to_square_padding,
+)
 from common import (
     answer_is_correct,
     generate_gqa_cot,
     generate_gqa_final_answer,
     make_gqa_conversation,
 )
+
+ORACLE_BOX_COORDINATE_SYSTEM = 'normalized_xyxy_on_center_padded_square'
 
 
 def parse_args():
@@ -47,8 +52,8 @@ def load_existing(path):
     return read_jsonl(path) if Path(path).exists() else []
 
 
-def build_unique_oracle_targets(target_objects):
-    """Keep only textually distinguishable GQA instances for strict matching."""
+def build_unique_oracle_targets(target_objects, image_width, image_height):
+    """Keep unique GQA targets and map their boxes to the model image canvas."""
     by_alias = {}
     invalid = []
     for object_record in target_objects:
@@ -71,7 +76,9 @@ def build_unique_oracle_targets(target_objects):
         record = records[0]
         targets.append({
             'object': record['name'],
-            'box': record['normalized_bbox_xyxy'],
+            'box': normalized_box_to_square_padding(
+                record['normalized_bbox_xyxy'], image_width, image_height
+            ),
             'aliases': [record['name']],
             'object_id': record['object_id'],
         })
@@ -115,6 +122,15 @@ def main():
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     existing = [] if args.no_resume else load_existing(output_path)
+    incompatible = [
+        record for record in existing
+        if record.get('oracle_box_coordinate_system') != ORACLE_BOX_COORDINATE_SYSTEM
+    ]
+    if incompatible:
+        raise ValueError(
+            'existing output uses the old or unknown oracle-box coordinate system; '
+            'choose a new --output path or rerun with --no-resume'
+        )
     completed = {record['sample_index'] for record in existing if 'sample_index' in record}
     end = len(manifest) if args.max_samples is None else min(len(manifest), args.start_index + args.max_samples)
     indices = [index for index in range(args.start_index, end) if index not in completed]
@@ -122,7 +138,8 @@ def main():
     if indices:
         model, preprocessor = load_model(args.model_path, precision='fp16')
 
-    with output_path.open('a') as handle:
+    output_mode = 'w' if args.no_resume else 'a'
+    with output_path.open(output_mode) as handle:
         for index in tqdm(indices, desc='GQA online oracle evaluation'):
             item = manifest[index]
             record = {
@@ -130,13 +147,17 @@ def main():
                 'image_id': item['image_id'], 'question': item['question'],
                 'answer': item['answer'], 'types': item['types'],
                 'target_objects': item['target_objects'],
+                'oracle_box_coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
             }
             try:
                 with Image.open(item['image_path']) as source_image:
                     image = source_image.convert('RGB')
+                image_width, image_height = image.size
                 conversation = make_gqa_conversation(item['question'])
                 prompt_length = _build_inference_batch(preprocessor, image, conversation=conversation)['input_ids'].shape[-1]
-                oracle_targets, excluded_targets = build_unique_oracle_targets(item['target_objects'])
+                oracle_targets, excluded_targets = build_unique_oracle_targets(
+                    item['target_objects'], image_width, image_height
+                )
                 if not oracle_targets:
                     raise ValueError('no textually unique GT targets are available for this sample')
                 baseline, baseline_sequences = generate_gqa_cot(
@@ -154,6 +175,11 @@ def main():
                 record.update(oracle_rollout)
                 record.update({
                     'oracle_targets': oracle_targets,
+                    'oracle_box_coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
+                    'source_image_size': {
+                        'width': image_width,
+                        'height': image_height,
+                    },
                     'excluded_oracle_targets': excluded_targets,
                     'baseline': baseline,
                     'baseline_prediction': baseline_final['prediction'],
@@ -186,6 +212,7 @@ def main():
             'context_window_tokens': args.context_window_tokens,
             'oracle_mode': 'online_explicit_target_oracle', 'coreference': 'off',
             'alias_policy': 'normalized full GQA scene-graph object name only',
+            'oracle_box_coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
         },
     }
     summary_path = output_path.with_suffix('.summary.json')

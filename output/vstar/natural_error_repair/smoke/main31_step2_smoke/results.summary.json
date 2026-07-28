@@ -1,0 +1,236 @@
+{
+  "run_id": "main31_step2_smoke",
+  "total_records": 1,
+  "successful_records": 1,
+  "error_records": 0,
+  "all_samples": {
+    "samples": 1,
+    "baseline_correct_count": 1,
+    "baseline_accuracy": 1.0,
+    "repair_correct_count": 1,
+    "repair_accuracy": 1.0,
+    "repair_minus_baseline": 0.0,
+    "answer_changed_count": 0,
+    "correctness_transitions": {
+      "correct_to_wrong": 0,
+      "wrong_to_correct": 0,
+      "correct_to_correct": 1,
+      "wrong_to_wrong": 0
+    },
+    "mcnemar_exact_two_sided_pvalue": 1.0
+  },
+  "strict_matched_subset": {
+    "samples": 1,
+    "baseline_correct_count": 1,
+    "baseline_accuracy": 1.0,
+    "repair_correct_count": 1,
+    "repair_accuracy": 1.0,
+    "repair_minus_baseline": 0.0,
+    "answer_changed_count": 0,
+    "correctness_transitions": {
+      "correct_to_wrong": 0,
+      "wrong_to_correct": 0,
+      "correct_to_correct": 1,
+      "wrong_to_wrong": 0
+    },
+    "mcnemar_exact_two_sided_pvalue": 1.0
+  },
+  "checker_triggered_subset": {
+    "samples": 1,
+    "baseline_correct_count": 1,
+    "baseline_accuracy": 1.0,
+    "repair_correct_count": 1,
+    "repair_accuracy": 1.0,
+    "repair_minus_baseline": 0.0,
+    "answer_changed_count": 0,
+    "correctness_transitions": {
+      "correct_to_wrong": 0,
+      "wrong_to_correct": 0,
+      "correct_to_correct": 1,
+      "wrong_to_wrong": 0
+    },
+    "mcnemar_exact_two_sided_pvalue": 1.0,
+    "grounding": {
+      "samples": 1,
+      "exact_copy_count": 1,
+      "exact_copy_rate": 1.0,
+      "coordinate_changed_count": 0,
+      "coordinate_changed_rate": 0.0,
+      "mean_baseline_iou_to_gt": 0.0,
+      "mean_replacement_iou_to_gt": 0.0,
+      "mean_iou_gain": 0.0,
+      "iou_improved_count": 0,
+      "iou_improved_rate": 0.0,
+      "replacement_iou_ge_0_3_count": 0,
+      "replacement_iou_ge_0_3_rate": 0.0,
+      "replacement_iou_ge_0_5_count": 0,
+      "replacement_iou_ge_0_5_rate": 0.0,
+      "crossed_to_iou_ge_0_3_count": 0,
+      "crossed_to_iou_ge_0_5_count": 0,
+      "mean_baseline_gt_coverage": 0.0,
+      "mean_replacement_gt_coverage": 0.0
+    }
+  },
+  "no_trigger_passthrough_subset": {
+    "samples": 0
+  },
+  "checker_coverage": {
+    "samples_with_eligible_coordinate": 1,
+    "samples_with_natural_error": 1,
+    "samples_without_natural_error": 0,
+    "total_coordinate_count": 2,
+    "eligible_coordinate_count": 1,
+    "natural_error_coordinate_count": 1
+  },
+  "by_selected_coordinate_index": {
+    "2": {
+      "samples": 1,
+      "baseline_correct_count": 1,
+      "baseline_accuracy": 1.0,
+      "repair_correct_count": 1,
+      "repair_accuracy": 1.0,
+      "repair_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 1,
+        "wrong_to_wrong": 0
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "grounding": {
+        "samples": 1,
+        "exact_copy_count": 1,
+        "exact_copy_rate": 1.0,
+        "coordinate_changed_count": 0,
+        "coordinate_changed_rate": 0.0,
+        "mean_baseline_iou_to_gt": 0.0,
+        "mean_replacement_iou_to_gt": 0.0,
+        "mean_iou_gain": 0.0,
+        "iou_improved_count": 0,
+        "iou_improved_rate": 0.0,
+        "replacement_iou_ge_0_3_count": 0,
+        "replacement_iou_ge_0_3_rate": 0.0,
+        "replacement_iou_ge_0_5_count": 0,
+        "replacement_iou_ge_0_5_rate": 0.0,
+        "crossed_to_iou_ge_0_3_count": 0,
+        "crossed_to_iou_ge_0_5_count": 0,
+        "mean_baseline_gt_coverage": 0.0,
+        "mean_replacement_gt_coverage": 0.0
+      }
+    }
+  },
+  "by_selected_gt_box_area": {
+    "tiny_lt_0.001": {
+      "samples": 1,
+      "baseline_correct_count": 1,
+      "baseline_accuracy": 1.0,
+      "repair_correct_count": 1,
+      "repair_accuracy": 1.0,
+      "repair_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 1,
+        "wrong_to_wrong": 0
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "grounding": {
+        "samples": 1,
+        "exact_copy_count": 1,
+        "exact_copy_rate": 1.0,
+        "coordinate_changed_count": 0,
+        "coordinate_changed_rate": 0.0,
+        "mean_baseline_iou_to_gt": 0.0,
+        "mean_replacement_iou_to_gt": 0.0,
+        "mean_iou_gain": 0.0,
+        "iou_improved_count": 0,
+        "iou_improved_rate": 0.0,
+        "replacement_iou_ge_0_3_count": 0,
+        "replacement_iou_ge_0_3_rate": 0.0,
+        "replacement_iou_ge_0_5_count": 0,
+        "replacement_iou_ge_0_5_rate": 0.0,
+        "crossed_to_iou_ge_0_3_count": 0,
+        "crossed_to_iou_ge_0_5_count": 0,
+        "mean_baseline_gt_coverage": 0.0,
+        "mean_replacement_gt_coverage": 0.0
+      }
+    }
+  },
+  "by_category": {
+    "direct_attributes": {
+      "all_samples": {
+        "samples": 1,
+        "baseline_correct_count": 1,
+        "baseline_accuracy": 1.0,
+        "repair_correct_count": 1,
+        "repair_accuracy": 1.0,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 0,
+        "correctness_transitions": {
+          "correct_to_wrong": 0,
+          "wrong_to_correct": 0,
+          "correct_to_correct": 1,
+          "wrong_to_wrong": 0
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0
+      },
+      "checker_triggered_subset": {
+        "samples": 1,
+        "baseline_correct_count": 1,
+        "baseline_accuracy": 1.0,
+        "repair_correct_count": 1,
+        "repair_accuracy": 1.0,
+        "repair_minus_baseline": 0.0,
+        "answer_changed_count": 0,
+        "correctness_transitions": {
+          "correct_to_wrong": 0,
+          "wrong_to_correct": 0,
+          "correct_to_correct": 1,
+          "wrong_to_wrong": 0
+        },
+        "mcnemar_exact_two_sided_pvalue": 1.0,
+        "grounding": {
+          "samples": 1,
+          "exact_copy_count": 1,
+          "exact_copy_rate": 1.0,
+          "coordinate_changed_count": 0,
+          "coordinate_changed_rate": 0.0,
+          "mean_baseline_iou_to_gt": 0.0,
+          "mean_replacement_iou_to_gt": 0.0,
+          "mean_iou_gain": 0.0,
+          "iou_improved_count": 0,
+          "iou_improved_rate": 0.0,
+          "replacement_iou_ge_0_3_count": 0,
+          "replacement_iou_ge_0_3_rate": 0.0,
+          "replacement_iou_ge_0_5_count": 0,
+          "replacement_iou_ge_0_5_rate": 0.0,
+          "crossed_to_iou_ge_0_3_count": 0,
+          "crossed_to_iou_ge_0_5_count": 0,
+          "mean_baseline_gt_coverage": 0.0,
+          "mean_replacement_gt_coverage": 0.0
+        }
+      }
+    }
+  },
+  "settings": {
+    "mode": "first_natural_baseline_error_one_shot_repair",
+    "baseline_results": "output/vstar/online_oracle/full_238/results.jsonl",
+    "repair_mode": "concise_typed_feedback",
+    "sandbox_refbind_mode": "text_only",
+    "checker_verdict": "misaligned",
+    "checker_reason": "wrong_object",
+    "checker_confidence": 1.0,
+    "iou_threshold": 0.5,
+    "selection_policy": "first_strictly_matched_coordinate_below_threshold",
+    "unmatched_policy": "not_applicable_and_unchanged",
+    "no_trigger_policy": "baseline_passthrough",
+    "replacement_second_verification": false,
+    "later_coordinate_verification": false,
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "likelihood_reduction": "mean",
+    "context_window_tokens": 48
+  }
+}
