@@ -1,0 +1,68 @@
+{
+  "total_records": 198,
+  "successful_records": 198,
+  "error_records": 0,
+  "all_samples": {
+    "samples": 198,
+    "correct_count": 120,
+    "accuracy": 0.6060606060606061,
+    "exact_copy_count": 89,
+    "exact_copy_rate": 0.4494949494949495,
+    "replacement_iou_ge_0_5_count": 55,
+    "replacement_iou_ge_0_5_rate": 0.2777777777777778,
+    "mean_replacement_iou_gain": 0.2950533711247597
+  },
+  "by_selected_coordinate_index": {
+    "1": {
+      "samples": 124,
+      "correct_count": 74,
+      "accuracy": 0.5967741935483871,
+      "exact_copy_count": 73,
+      "exact_copy_rate": 0.5887096774193549,
+      "replacement_iou_ge_0_5_count": 1,
+      "replacement_iou_ge_0_5_rate": 0.008064516129032258,
+      "mean_replacement_iou_gain": 0.035317937868525315
+    },
+    "2": {
+      "samples": 62,
+      "correct_count": 37,
+      "accuracy": 0.5967741935483871,
+      "exact_copy_count": 14,
+      "exact_copy_rate": 0.22580645161290322,
+      "replacement_iou_ge_0_5_count": 44,
+      "replacement_iou_ge_0_5_rate": 0.7096774193548387,
+      "mean_replacement_iou_gain": 0.710431860277354
+    },
+    "3": {
+      "samples": 11,
+      "correct_count": 9,
+      "accuracy": 0.8181818181818182,
+      "exact_copy_count": 2,
+      "exact_copy_rate": 0.18181818181818182,
+      "replacement_iou_ge_0_5_count": 9,
+      "replacement_iou_ge_0_5_rate": 0.8181818181818182,
+      "mean_replacement_iou_gain": 0.8176698045281209
+    },
+    "4": {
+      "samples": 1,
+      "correct_count": 0,
+      "accuracy": 0.0,
+      "exact_copy_count": 0,
+      "exact_copy_rate": 0.0,
+      "replacement_iou_ge_0_5_count": 1,
+      "replacement_iou_ge_0_5_rate": 1.0,
+      "mean_replacement_iou_gain": 1.0
+    }
+  },
+  "settings": {
+    "repair_mode": "separated_reference_feedback_v2",
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "mode": "one_shot_reference_random_box_repair",
+    "initial_verification_count": 1,
+    "replacement_second_verification": false,
+    "later_coordinate_verification": false,
+    "sandbox_refbind_for_random_box": false,
+    "sandbox_refbind_mode": "skip_q_refbind"
+  }
+}

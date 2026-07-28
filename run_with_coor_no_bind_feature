@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# Run the strict feature-only ablation for all repair prompts.
+# q remains literal <coor>...</coor>, but its REFbind feature is skipped.
+#
+# Examples:
+#   bash run_with_coor_no_bind_feature --gpus 4,5,6,7
+#   bash run_with_coor_no_bind_feature --gpus 6,7 --max-samples 30
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+GPU_LIST=""
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+MAX_SAMPLES=""
+MODEL_PATH="weights/Volcano-7b"
+MANIFEST="output/vstar/one_shot_reference_repair/full_238/manifest.jsonl"
+VERIFIER_OUTPUT="output/vstar/one_shot_reference_repair/full_238/verifier_outputs.jsonl"
+IMAGE_DIR="/data/zhonggai/VStar"
+OUTPUT_ROOT="output/vstar/one_shot_reference_repair/with_coor_no_bind_feature"
+MAX_NEW_TOKENS=2048
+TEMPERATURE=0.0
+PYTHON_BIN="/home/zhonggai/miniconda3/envs/vocot/bin/python"
+
+MODES=(
+    typed_feedback
+    concise_typed_feedback
+    separated_reference_feedback
+    separated_reference_feedback_v2
+)
+
+usage() {
+    cat <<'EOF'
+Usage: bash run_with_coor_no_bind_feature --gpus GPU[,GPU...] [options]
+
+Runs the four repair prompts under the strict feature-only ablation:
+  - q remains a literal <coor>x1,y1,x2,y2</coor> in the repair prompt;
+  - only q's REFbind / V(q) feature is skipped;
+  - H_t and the committed replacement r bind normally.
+
+Options:
+  --gpus LIST          Required CUDA devices, e.g. 6 or 4,5,6,7.
+                        Runs up to one setting per supplied GPU at once.
+  --run-id ID          Shared output run id (default: timestamp).
+  --max-samples N      Optional quick-run limit for every setting.
+  --model-path PATH    Default: weights/Volcano-7b.
+  --output-root PATH   Default: output/vstar/one_shot_reference_repair/with_coor_no_bind_feature.
+  --max-new-tokens N   Default: 2048.
+  --temperature VALUE  Default: 0.0.
+  -h, --help           Show this message.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --gpus) GPU_LIST="$2"; shift 2 ;;
+        --run-id) RUN_ID="$2"; shift 2 ;;
+        --max-samples) MAX_SAMPLES="$2"; shift 2 ;;
+        --model-path) MODEL_PATH="$2"; shift 2 ;;
+        --output-root) OUTPUT_ROOT="$2"; shift 2 ;;
+        --max-new-tokens) MAX_NEW_TOKENS="$2"; shift 2 ;;
+        --temperature) TEMPERATURE="$2"; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
+    esac
+done
+
+if [[ -z "$GPU_LIST" ]]; then
+    echo "--gpus is required." >&2
+    usage >&2
+    exit 2
+fi
+IFS=',' read -r -a GPUS <<< "$GPU_LIST"
+if [[ ${#GPUS[@]} -eq 0 || -z "${GPUS[0]}" ]]; then
+    echo "No valid GPU was supplied." >&2
+    exit 2
+fi
+
+SUITE_DIR="$OUTPUT_ROOT/suites/$RUN_ID"
+LOG_DIR="$SUITE_DIR/logs"
+mkdir -p "$LOG_DIR"
+
+COMMON_ARGS=(
+    eval/Oracle_experiment/vstar/evaluate_one_shot_reference_repair.py
+    --model-path "$MODEL_PATH"
+    --manifest "$MANIFEST"
+    --verifier-output "$VERIFIER_OUTPUT"
+    --image-dir "$IMAGE_DIR"
+    --run-id "$RUN_ID"
+    --sandbox-refbind-mode skip_q_refbind
+    --max-new-tokens "$MAX_NEW_TOKENS"
+    --temperature "$TEMPERATURE"
+    --verbose
+)
+if [[ -n "$MAX_SAMPLES" ]]; then
+    COMMON_ARGS+=(--max-samples "$MAX_SAMPLES")
+fi
+
+run_setting() {
+    local gpu="$1"
+    local mode="$2"
+    local output_path="$OUTPUT_ROOT/$mode/results.jsonl"
+    local log_path="$LOG_DIR/$mode.log"
+    echo "[$mode] GPU $gpu; strict mode: <coor>q</coor> retained, V(q) skipped"
+    CUDA_VISIBLE_DEVICES="$gpu" "$PYTHON_BIN" -u "${COMMON_ARGS[@]}" \
+        --repair-mode "$mode" \
+        --output "$output_path" 2>&1 | sed -u "s/^/[$mode] /" | tee "$log_path"
+}
+
+echo "Suite run id: $RUN_ID"
+echo "GPUs: $GPU_LIST"
+echo "Modes: ${MODES[*]}"
+
+# Process in waves: one setting per supplied card, so a single supplied GPU
+# runs sequentially while four cards run the entire suite concurrently.
+for ((start = 0; start < ${#MODES[@]}; start += ${#GPUS[@]})); do
+    pids=()
+    for ((offset = 0; offset < ${#GPUS[@]} && start + offset < ${#MODES[@]}; offset++)); do
+        run_setting "${GPUS[$offset]}" "${MODES[$((start + offset))]}" &
+        pids+=("$!")
+    done
+    failed=0
+    for pid in "${pids[@]}"; do
+        if ! wait "$pid"; then
+            failed=1
+        fi
+    done
+    if [[ "$failed" -ne 0 ]]; then
+        echo "At least one setting failed; no combined summary was written." >&2
+        exit 1
+    fi
+done
+
+SUMMARY_PATHS=()
+for mode in "${MODES[@]}"; do
+    SUMMARY_PATHS+=("$OUTPUT_ROOT/$mode/$RUN_ID/results.summary.json")
+done
+
+COMBINED_SUMMARY="$SUITE_DIR/combined_summary.json"
+"$PYTHON_BIN" -c '
+import json
+import sys
+from pathlib import Path
+
+output_path = Path(sys.argv[1])
+run_id = sys.argv[2]
+modes = [
+    "typed_feedback",
+    "concise_typed_feedback",
+    "separated_reference_feedback",
+    "separated_reference_feedback_v2",
+]
+summary_paths = [Path(value) for value in sys.argv[3:]]
+combined = {"suite_run_id": run_id, "sandbox_refbind_mode": "skip_q_refbind", "settings": {}}
+for mode, path in zip(modes, summary_paths):
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    combined["settings"][mode] = {
+        "summary_path": str(path),
+        "all_samples": summary.get("all_samples"),
+        "by_selected_coordinate_index": summary.get("by_selected_coordinate_index"),
+        "settings": summary.get("settings"),
+    }
+output_path.write_text(json.dumps(combined, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+' "$COMBINED_SUMMARY" "$RUN_ID" "${SUMMARY_PATHS[@]}"
+
+echo "Finished strict <coor>-preserving no-REFbind suite."
+echo "Combined summary: $COMBINED_SUMMARY"

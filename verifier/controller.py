@@ -20,7 +20,11 @@ from transformers import LogitsProcessor, LogitsProcessorList, StoppingCriteria,
 from constants import DEFAULT_BOC_TOKEN, DEFAULT_EOC_TOKEN
 from utils.coordinate_intervention import find_coordinate_spans
 
-from .prompts import RepairMode, build_repair_prompt
+from .prompts import (
+    RepairMode,
+    build_repair_prompt,
+    build_repair_prompt_text_only_q,
+)
 from .stored_oracle import StoredOracleVerifier
 from .types import Box, VerificationLookup
 
@@ -156,11 +160,12 @@ class VerifierController:
             raise ValueError('sample_id is required when verifier is enabled')
         if repair_mode not in {
             'blind_retry', 'binary_feedback', 'typed_feedback', 'concise_typed_feedback',
-            'separated_reference_feedback'
+            'separated_reference_feedback', 'separated_reference_feedback_v2'
         }:
             raise ValueError(
                 'repair_mode must be blind_retry, binary_feedback, typed_feedback, '
-                'concise_typed_feedback, or separated_reference_feedback'
+                'concise_typed_feedback, separated_reference_feedback, or '
+                'separated_reference_feedback_v2'
             )
         if not 0.0 <= float(accept_confidence) <= 1.0:
             raise ValueError('accept_confidence must be in [0, 1]')
@@ -224,7 +229,9 @@ class VerifierController:
         return text[-400:] or 'the current object reference'
 
     def _run_until_coordinate(self, persistent_ids: Sequence[int], temporary_ids: Sequence[int],
-                              max_new_tokens: int, temperature: float) -> _GenerationBoundary:
+                              max_new_tokens: int, temperature: float,
+                              suppress_refbind_generated_eoc_indices: Optional[Sequence[int]] = None
+                              ) -> _GenerationBoundary:
         """Freshly prefill accepted history, then stop after one candidate EOC."""
         batch = self.batch_factory()
         prompt_length = int(batch['input_ids'].shape[-1])
@@ -243,6 +250,7 @@ class VerifierController:
             logits_processor=LogitsProcessorList([processor]),
             stopping_criteria=StoppingCriteriaList([stopper]),
             record_bound_boxes=True,
+            suppress_refbind_generated_eoc_indices=suppress_refbind_generated_eoc_indices,
         )
 
         generated = sequences[0, prompt_length:].detach().cpu().tolist()
@@ -259,9 +267,14 @@ class VerifierController:
         # written into temporary feedback follows Volcano's normal REFbind path
         # inside the sandbox. The candidate EOC still stops before its feature
         # can be injected.
-        expected_bound_count = len(find_coordinate_spans(
+        completed_prefix_coordinate_count = len(find_coordinate_spans(
             forced_prefix, self.boc_token_id, self.eoc_token_id
         ))
+        suppressed_prefix_coordinate_count = sum(
+            1 for index in (suppress_refbind_generated_eoc_indices or [])
+            if 1 <= int(index) <= completed_prefix_coordinate_count
+        )
+        expected_bound_count = completed_prefix_coordinate_count - suppressed_prefix_coordinate_count
         if bound_box_count != expected_bound_count:
             raise RuntimeError(
                 'unexpected REFbind injection while candidate/feedback was uncommitted: '
@@ -360,11 +373,15 @@ class VerifierController:
     def run_one_shot_reference_repair(self, reference_generated_ids: Sequence[int],
                                       selected_coordinate_index: int, random_box: Sequence[float],
                                       max_new_tokens: int = 1024,
-                                      temperature: float = 0.0) -> VerifierInferenceResult:
+                                      temperature: float = 0.0,
+                                      suppress_refbind_for_random_box: bool = False
+                                      ) -> VerifierInferenceResult:
         """Repair one forced random box on a saved oracle reference trajectory.
 
         Only the selected coordinate is verified.  Its replacement is committed
         once without a second verifier call; all later CoT decoding is free.
+        ``suppress_refbind_for_random_box`` keeps literal q text but skips only
+        q's temporary visual binding in the repair sandbox.
         """
         spans = find_coordinate_spans(reference_generated_ids, self.boc_token_id, self.eoc_token_id)
         selected_offset = int(selected_coordinate_index) - 1
@@ -392,10 +409,29 @@ class VerifierController:
         if self.repair_mode == 'blind_retry':
             raise ValueError(
                 'one-shot reference repair requires binary_feedback, typed_feedback, '
-                'concise_typed_feedback, or separated_reference_feedback'
+                'concise_typed_feedback, separated_reference_feedback, or '
+                'separated_reference_feedback_v2'
             )
         temporary_ids = self.tokenizer(repair_text, add_special_tokens=False).input_ids
-        repaired = self._run_until_coordinate(h_t_ids, temporary_ids, max_new_tokens, temperature)
+        suppressed_eoc_indices = None
+        if suppress_refbind_for_random_box:
+            temporary_spans = find_coordinate_spans(
+                temporary_ids, self.boc_token_id, self.eoc_token_id
+            )
+            if len(temporary_spans) != 1:
+                raise RuntimeError(
+                    'feature-only q-refbind ablation requires exactly one completed '
+                    'coordinate in temporary repair feedback'
+                )
+            # H_t contains exactly the preceding completed coordinates; q is
+            # the next generated EOC in this force-replayed sandbox.
+            suppressed_eoc_indices = [len(find_coordinate_spans(
+                h_t_ids, self.boc_token_id, self.eoc_token_id
+            )) + 1]
+        repaired = self._run_until_coordinate(
+            h_t_ids, temporary_ids, max_new_tokens, temperature,
+            suppress_refbind_generated_eoc_indices=suppressed_eoc_indices,
+        )
         if repaired.candidate_span is None or repaired.candidate_box is None:
             raise RuntimeError('one-shot repair ended before a replacement coordinate')
         replacement_tokens = repaired.generated_ids[
@@ -408,7 +444,10 @@ class VerifierController:
         continued_ids = self._continue_freely(committed, max_new_tokens, temperature)
         event = {
             'sample_id': self.sample_id,
-            'mode': 'one_shot_reference_random_box_repair',
+            'mode': (
+                'one_shot_reference_random_box_repair_keep_coor_skip_q_refbind'
+                if suppress_refbind_for_random_box else 'one_shot_reference_random_box_repair'
+            ),
             'source_coordinate_index': int(selected_coordinate_index),
             'object_reference': object_reference,
             'reference_prefix_text': self.tokenizer.decode(h_t_ids, skip_special_tokens=False),
@@ -435,6 +474,107 @@ class VerifierController:
             'initial_verdict': result.verdict,
             'initial_reason': result.reason,
             'repair_prompt': repair_text,
+            'sandbox_refbind_for_random_box': not suppress_refbind_for_random_box,
+            'sandbox_coordinate_text_preserved': bool(suppress_refbind_for_random_box),
+            'suppressed_refbind_generated_eoc_indices': suppressed_eoc_indices or [],
+            'sandbox_bound_box_count_before_replacement': repaired.bound_box_count,
+            'replacement_box': self._box_list(repaired.candidate_box),
+            'replacement_coordinate_text': self.tokenizer.decode(
+                replacement_tokens, skip_special_tokens=False,
+            ),
+            'repair_sandbox_text': self.tokenizer.decode(
+                repaired.generated_ids, skip_special_tokens=False,
+            ),
+            'replacement_committed_without_second_verification': True,
+            'later_coordinates_verified': False,
+            'reference_prefix_replayed': True,
+            'free_continuation_text': self.tokenizer.decode(
+                continued_ids[len(committed):], skip_special_tokens=False,
+            ),
+        }
+        self._write_event(event)
+        return VerifierInferenceResult(
+            self.tokenizer.decode(continued_ids, skip_special_tokens=False),
+            continued_ids, 'ok', [event]
+        )
+
+    def run_one_shot_reference_repair_text_only_q(
+            self, reference_generated_ids: Sequence[int],
+            selected_coordinate_index: int, random_box: Sequence[float],
+            max_new_tokens: int = 1024,
+            temperature: float = 0.0) -> VerifierInferenceResult:
+        """One-shot repair control: q is text-only and never binds in sandbox.
+
+        This deliberately remains separate from the visual-aware repair method.
+        Coordinates already present in H_t still follow ordinary REFbind during
+        prefix replay; only the rejected q is not a valid coordinate span.
+        """
+        spans = find_coordinate_spans(reference_generated_ids, self.boc_token_id, self.eoc_token_id)
+        selected_offset = int(selected_coordinate_index) - 1
+        if not 0 <= selected_offset < len(spans):
+            raise ValueError(f'selected_coordinate_index must be in [1, {len(spans)}]')
+        target_span = spans[selected_offset]
+        h_t_ids = list(reference_generated_ids[:target_span[0]])
+        forced = self._run_forced_coordinate(h_t_ids, random_box, max_new_tokens, temperature)
+        assert forced.candidate_box is not None and forced.candidate_span is not None
+        lookup = self.verifier.verify(
+            self.sample_id, int(selected_coordinate_index), 0, forced.candidate_box
+        )
+        result = lookup.result
+        if (lookup.missing_oracle_record or lookup.oracle_candidate_mismatch
+                or result.verdict != 'misaligned' or result.reason != 'wrong_object'):
+            raise RuntimeError(
+                'one-shot random intervention requires a matching stored '
+                'misaligned/wrong_object oracle record'
+            )
+
+        object_reference = self._object_reference(h_t_ids)
+        repair_text = build_repair_prompt_text_only_q(
+            object_reference, forced.candidate_box, result.reason, self.repair_mode
+        )
+        temporary_ids = self.tokenizer(repair_text, add_special_tokens=False).input_ids
+        repaired = self._run_until_coordinate(h_t_ids, temporary_ids, max_new_tokens, temperature)
+        if repaired.candidate_span is None or repaired.candidate_box is None:
+            raise RuntimeError('one-shot repair ended before a replacement coordinate')
+        replacement_tokens = repaired.generated_ids[
+            repaired.candidate_span[0]:repaired.candidate_span[1] + 1
+        ]
+        committed = h_t_ids + replacement_tokens
+        continued_ids = self._continue_freely(committed, max_new_tokens, temperature)
+        event = {
+            'sample_id': self.sample_id,
+            'mode': 'one_shot_reference_random_box_repair_text_only_q',
+            'source_coordinate_index': int(selected_coordinate_index),
+            'object_reference': object_reference,
+            'reference_prefix_text': self.tokenizer.decode(h_t_ids, skip_special_tokens=False),
+            'reference_box': self._box_list(self._box_from_span(reference_generated_ids, target_span)),
+            'random_box': self._box_list(forced.candidate_box),
+            'forced_random_coordinate_text': self.tokenizer.decode(
+                forced.generated_ids[forced.candidate_span[0]:forced.candidate_span[1] + 1],
+                skip_special_tokens=False,
+            ),
+            'stored_oracle_check': {
+                'lookup_key': {
+                    'sample_id': self.sample_id,
+                    'grounding_step': int(selected_coordinate_index),
+                    'attempt_index': 0,
+                },
+                'candidate_bbox': self._box_list(forced.candidate_box),
+                'verdict': result.verdict,
+                'reason': result.reason,
+                'confidence': result.confidence,
+                'missing_oracle_record': lookup.missing_oracle_record,
+                'oracle_candidate_mismatch': lookup.oracle_candidate_mismatch,
+                'error': lookup.error,
+            },
+            'initial_verdict': result.verdict,
+            'initial_reason': result.reason,
+            'repair_prompt': repair_text,
+            'sandbox_refbind_for_random_box': False,
+            'sandbox_expected_bound_box_count': len(find_coordinate_spans(
+                h_t_ids, self.boc_token_id, self.eoc_token_id
+            )),
+            'sandbox_bound_box_count_before_replacement': repaired.bound_box_count,
             'replacement_box': self._box_list(repaired.candidate_box),
             'replacement_coordinate_text': self.tokenizer.decode(
                 replacement_tokens, skip_special_tokens=False,

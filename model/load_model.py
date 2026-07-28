@@ -310,7 +310,7 @@ def one_shot_reference_repair_infer(
         selected_coordinate_index, random_box, cot=True, sample_id=None,
         oracle_file=None, max_new_tokens=1024, temperature=0.0,
         repair_mode='typed_feedback', accept_confidence=0.8, log_path=None,
-        conversation=None, options=None):
+        conversation=None, options=None, sandbox_refbind_mode='bind'):
     """Repair one random intervention on a saved online-oracle CoT trajectory.
 
     The StoredOracle file contains exactly the selected initial candidate's
@@ -319,6 +319,10 @@ def one_shot_reference_repair_infer(
     """
     if oracle_file is None:
         raise ValueError('oracle_file is required for one_shot_reference_repair_infer')
+    if sandbox_refbind_mode not in {'bind', 'text_only', 'skip_q_refbind'}:
+        raise ValueError(
+            "sandbox_refbind_mode must be 'bind', 'text_only', or 'skip_q_refbind'"
+        )
 
     def batch_factory():
         return _build_inference_batch(
@@ -337,12 +341,18 @@ def one_shot_reference_repair_infer(
         on_failure='abort_sample',
         log_path=log_path,
     )
-    return controller.run_one_shot_reference_repair(
+    run_kwargs = dict(
         reference_generated_ids=reference_generated_ids,
         selected_coordinate_index=selected_coordinate_index,
         random_box=random_box,
         max_new_tokens=max_new_tokens,
         temperature=temperature,
+    )
+    if sandbox_refbind_mode == 'text_only':
+        return controller.run_one_shot_reference_repair_text_only_q(**run_kwargs)
+    return controller.run_one_shot_reference_repair(
+        suppress_refbind_for_random_box=(sandbox_refbind_mode == 'skip_q_refbind'),
+        **run_kwargs,
     )
 
 
@@ -366,6 +376,40 @@ def one_shot_reference_corruption_infer(
     return controller.run_one_shot_reference_corruption(
         reference_generated_ids, selected_coordinate_index, random_box,
         max_new_tokens=max_new_tokens, temperature=temperature,
+    )
+
+
+def one_shot_reference_repair_text_only_q_infer(
+        model, preprocessor, image, query, reference_generated_ids,
+        selected_coordinate_index, random_box, cot=True, sample_id=None,
+        oracle_file=None, max_new_tokens=1024, temperature=0.0,
+        repair_mode='separated_reference_feedback', accept_confidence=0.8,
+        log_path=None, conversation=None, options=None):
+    """Separate one-shot repair control where q has no sandbox REFbind feature.
+
+    The original ``one_shot_reference_repair_infer`` remains untouched.  This
+    entry point renders q as ordinary numeric feedback, while retaining normal
+    REFbind for all completed H_t coordinates and for the committed r.
+    """
+    return one_shot_reference_repair_infer(
+        model=model,
+        preprocessor=preprocessor,
+        image=image,
+        query=query,
+        reference_generated_ids=reference_generated_ids,
+        selected_coordinate_index=selected_coordinate_index,
+        random_box=random_box,
+        cot=cot,
+        sample_id=sample_id,
+        oracle_file=oracle_file,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        repair_mode=repair_mode,
+        accept_confidence=accept_confidence,
+        log_path=log_path,
+        conversation=conversation,
+        options=options,
+        sandbox_refbind_mode='text_only',
     )
 
 

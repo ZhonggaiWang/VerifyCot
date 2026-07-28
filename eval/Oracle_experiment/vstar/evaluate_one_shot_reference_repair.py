@@ -43,7 +43,7 @@ def parse_args():
         '--repair-mode',
         choices=(
             'binary_feedback', 'typed_feedback', 'concise_typed_feedback',
-            'separated_reference_feedback',
+            'separated_reference_feedback', 'separated_reference_feedback_v2',
         ),
         default='typed_feedback',
     )
@@ -51,6 +51,17 @@ def parse_args():
     parser.add_argument('--temperature', type=float, default=0.0)
     parser.add_argument('--max-samples', type=int, default=None)
     parser.add_argument('--no-resume', action='store_true')
+    parser.add_argument(
+        '--no-sandbox-refbind', action='store_true',
+        help='Backward-compatible alias for --sandbox-refbind-mode text_only.',
+    )
+    parser.add_argument(
+        '--sandbox-refbind-mode', choices=('bind', 'text_only', 'skip_q_refbind'), default='bind',
+        help=(
+            'bind: normal q REFbind; text_only: q has no <coor> tag; '
+            'skip_q_refbind: preserve <coor>q</coor> text but skip only V(q).'
+        ),
+    )
     parser.add_argument('--verbose', action='store_true',
                         help='Print the single verifier decision and repair box for every sample.')
     return parser.parse_args()
@@ -122,19 +133,28 @@ def make_summary(records, args):
             str(step): metrics(items) for step, items in sorted(by_step.items())
         },
         'settings': {
-            'repair_mode': args.repair_mode,
+            'repair_mode': (
+                f'{args.repair_mode}_text_only_q'
+                if args.sandbox_refbind_mode == 'text_only' else args.repair_mode
+            ),
             'temperature': args.temperature,
             'max_new_tokens': args.max_new_tokens,
             'mode': 'one_shot_reference_random_box_repair',
             'initial_verification_count': 1,
             'replacement_second_verification': False,
             'later_coordinate_verification': False,
+            'sandbox_refbind_for_random_box': args.sandbox_refbind_mode == 'bind',
+            'sandbox_refbind_mode': args.sandbox_refbind_mode,
         },
     }
 
 
 def main():
     args = parse_args()
+    if args.no_sandbox_refbind:
+        if args.sandbox_refbind_mode != 'bind':
+            raise ValueError('use either --no-sandbox-refbind or --sandbox-refbind-mode, not both')
+        args.sandbox_refbind_mode = 'text_only'
     output_path, run_id = resolve_run_output(args.output, args.run_id)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     verifier_log_path = Path(args.verifier_log) if args.verifier_log else output_path.with_name('verifier_events.jsonl')
@@ -163,15 +183,20 @@ def main():
             try:
                 with Image.open(Path(args.image_dir) / item['image']) as opened:
                     image = opened.convert('RGB')
-                result = one_shot_reference_repair_infer(
-                    model, preprocessor, image, query=None,
+                common_kwargs = dict(
+                    model=model, preprocessor=preprocessor, image=image, query=None,
                     conversation=item['conversation'], options=item['options'],
                     reference_generated_ids=item['reference_generated_ids'],
                     selected_coordinate_index=item['selected_coordinate_index'],
                     random_box=item['random_box'], sample_id=item['sample_id'],
-                    oracle_file=args.verifier_output, repair_mode=args.repair_mode,
+                    oracle_file=args.verifier_output,
                     max_new_tokens=args.max_new_tokens, temperature=args.temperature,
                     log_path=str(verifier_log_path),
+                )
+                result = one_shot_reference_repair_infer(
+                    repair_mode=args.repair_mode,
+                    sandbox_refbind_mode=args.sandbox_refbind_mode,
+                    **common_kwargs,
                 )
                 event = result.events[0]
                 repair_box = event['replacement_box']

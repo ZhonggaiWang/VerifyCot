@@ -1,0 +1,67 @@
+{
+  "total_records": 198,
+  "successful_records": 197,
+  "error_records": 1,
+  "all_samples": {
+    "samples": 197,
+    "correct_count": 120,
+    "accuracy": 0.6091370558375635,
+    "exact_copy_count": 26,
+    "exact_copy_rate": 0.1319796954314721,
+    "replacement_iou_ge_0_5_count": 57,
+    "replacement_iou_ge_0_5_rate": 0.2893401015228426,
+    "mean_replacement_iou_gain": 0.30463414625640933
+  },
+  "by_selected_coordinate_index": {
+    "1": {
+      "samples": 123,
+      "correct_count": 75,
+      "accuracy": 0.6097560975609756,
+      "exact_copy_count": 22,
+      "exact_copy_rate": 0.17886178861788618,
+      "replacement_iou_ge_0_5_count": 3,
+      "replacement_iou_ge_0_5_rate": 0.024390243902439025,
+      "mean_replacement_iou_gain": 0.052511021897007217
+    },
+    "2": {
+      "samples": 62,
+      "correct_count": 36,
+      "accuracy": 0.5806451612903226,
+      "exact_copy_count": 4,
+      "exact_copy_rate": 0.06451612903225806,
+      "replacement_iou_ge_0_5_count": 44,
+      "replacement_iou_ge_0_5_rate": 0.7096774193548387,
+      "mean_replacement_iou_gain": 0.7026075624409196
+    },
+    "3": {
+      "samples": 11,
+      "correct_count": 9,
+      "accuracy": 0.8181818181818182,
+      "exact_copy_count": 0,
+      "exact_copy_rate": 0.0,
+      "replacement_iou_ge_0_5_count": 9,
+      "replacement_iou_ge_0_5_rate": 0.8181818181818182,
+      "mean_replacement_iou_gain": 0.8174911134403388
+    },
+    "4": {
+      "samples": 1,
+      "correct_count": 0,
+      "accuracy": 0.0,
+      "exact_copy_count": 0,
+      "exact_copy_rate": 0.0,
+      "replacement_iou_ge_0_5_count": 1,
+      "replacement_iou_ge_0_5_rate": 1.0,
+      "mean_replacement_iou_gain": 1.0
+    }
+  },
+  "settings": {
+    "repair_mode": "typed_feedback",
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "mode": "one_shot_reference_random_box_repair",
+    "initial_verification_count": 1,
+    "replacement_second_verification": false,
+    "later_coordinate_verification": false,
+    "sandbox_refbind_for_random_box": false
+  }
+}

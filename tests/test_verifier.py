@@ -13,7 +13,10 @@ from verifier.controller import (
     _ForcePrefixSuppressNextBocProcessor,
     _StopAfterNewCoordinate,
 )
-from verifier.prompts import build_repair_prompt
+from verifier.prompts import (
+    build_repair_prompt,
+    build_repair_prompt_text_only_q,
+)
 from verifier.stored_oracle import StoredOracleVerifier
 from verifier.types import VerificationResult
 
@@ -68,6 +71,18 @@ class VerifierPrimitiveTests(unittest.TestCase):
             self.assertIn(f'{DEFAULT_BOC_TOKEN}0.100,0.200,0.300,0.400{DEFAULT_EOC_TOKEN}', prompt)
             self.assertTrue(prompt.endswith(DEFAULT_BOC_TOKEN))
         self.assertEqual(build_repair_prompt('blind_retry', reference, box, 'wrong_object'), '')
+
+    def test_text_only_feedback_has_no_completed_coordinate_span(self):
+        for mode in (
+            'binary_feedback', 'typed_feedback', 'concise_typed_feedback',
+            'separated_reference_feedback', 'separated_reference_feedback_v2',
+        ):
+            prompt = build_repair_prompt_text_only_q(
+                'the target object', [0.1, 0.2, 0.3, 0.4], 'wrong_object', mode
+            )
+            self.assertIn('Rejected coordinate (text only): [0.100,0.200,0.300,0.400]', prompt)
+            self.assertNotIn(DEFAULT_EOC_TOKEN, prompt)
+            self.assertTrue(prompt.endswith(DEFAULT_BOC_TOKEN))
 
     def test_prefix_replay_and_coordinate_stop_boundary(self):
         processor = _ForcePrefixProcessor(prompt_length=3, prefix_ids=[7, 8])

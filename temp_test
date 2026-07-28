@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# Temporary paired prompt test for VStar one-shot reference repair.
+# Usage examples:
+#   bash temp_test --gpus 6,7
+#   bash temp_test --gpus 6 --sandbox-refbind-mode bind --max-samples 30
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+GPU_LIST=""
+SANDBOX_REFBIND_MODE="text_only"
+MAX_SAMPLES=""
+MODEL_PATH="weights/Volcano-7b"
+MANIFEST="output/vstar/one_shot_reference_repair/full_238/manifest.jsonl"
+VERIFIER_OUTPUT="output/vstar/one_shot_reference_repair/full_238/verifier_outputs.jsonl"
+IMAGE_DIR="/data/zhonggai/VStar"
+MAX_NEW_TOKENS=2048
+TEMPERATURE=0.0
+PYTHON_BIN="/home/zhonggai/miniconda3/envs/vocot/bin/python"
+
+usage() {
+    cat <<'EOF'
+Usage: bash temp_test --gpus GPU[,GPU...] [options]
+
+Runs one VStar test for each repair prompt:
+  1. typed_feedback
+  2. concise_typed_feedback
+
+Options:
+  --gpus LIST                    Required CUDA devices, e.g. 6 or 4,6.
+                                 Two or more cards run the two settings in parallel.
+  --sandbox-refbind-mode MODE    bind | text_only | skip_q_refbind
+                                 (default: text_only).
+  --max-samples N                Optional quick-run limit.
+  --model-path PATH              Default: weights/Volcano-7b.
+  --max-new-tokens N             Default: 2048.
+  --temperature VALUE            Default: 0.0.
+  -h, --help                     Show this message.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --gpus)
+            GPU_LIST="$2"
+            shift 2
+            ;;
+        --sandbox-refbind-mode)
+            SANDBOX_REFBIND_MODE="$2"
+            shift 2
+            ;;
+        --max-samples)
+            MAX_SAMPLES="$2"
+            shift 2
+            ;;
+        --model-path)
+            MODEL_PATH="$2"
+            shift 2
+            ;;
+        --max-new-tokens)
+            MAX_NEW_TOKENS="$2"
+            shift 2
+            ;;
+        --temperature)
+            TEMPERATURE="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+done
+
+if [[ -z "$GPU_LIST" ]]; then
+    echo "--gpus is required." >&2
+    usage >&2
+    exit 2
+fi
+if [[ "$SANDBOX_REFBIND_MODE" != "bind" && "$SANDBOX_REFBIND_MODE" != "text_only" && "$SANDBOX_REFBIND_MODE" != "skip_q_refbind" ]]; then
+    echo "--sandbox-refbind-mode must be bind, text_only, or skip_q_refbind." >&2
+    exit 2
+fi
+
+IFS=',' read -r -a GPUS <<< "$GPU_LIST"
+if [[ ${#GPUS[@]} -eq 0 || -z "${GPUS[0]}" ]]; then
+    echo "No valid GPU was supplied." >&2
+    exit 2
+fi
+
+COMMON_ARGS=(
+    eval/Oracle_experiment/vstar/evaluate_one_shot_reference_repair.py
+    --model-path "$MODEL_PATH"
+    --manifest "$MANIFEST"
+    --verifier-output "$VERIFIER_OUTPUT"
+    --image-dir "$IMAGE_DIR"
+    --sandbox-refbind-mode "$SANDBOX_REFBIND_MODE"
+    --max-new-tokens "$MAX_NEW_TOKENS"
+    --temperature "$TEMPERATURE"
+    --verbose
+)
+if [[ -n "$MAX_SAMPLES" ]]; then
+    COMMON_ARGS+=(--max-samples "$MAX_SAMPLES")
+fi
+
+run_setting() {
+    local gpu="$1"
+    local repair_mode="$2"
+    local output_path="output/vstar/one_shot_reference_repair/temp_test/${repair_mode}/results.jsonl"
+    echo "[$repair_mode] CUDA_VISIBLE_DEVICES=$gpu; sandbox_refbind_mode=$SANDBOX_REFBIND_MODE"
+    CUDA_VISIBLE_DEVICES="$gpu" "$PYTHON_BIN" -u "${COMMON_ARGS[@]}" \
+        --repair-mode "$repair_mode" \
+        --output "$output_path"
+}
+
+echo "Temporary paired test: typed_feedback vs concise_typed_feedback"
+echo "GPUs: $GPU_LIST"
+
+if [[ ${#GPUS[@]} -ge 2 ]]; then
+    run_setting "${GPUS[0]}" typed_feedback &
+    typed_pid=$!
+    run_setting "${GPUS[1]}" concise_typed_feedback &
+    concise_pid=$!
+    wait "$typed_pid"
+    wait "$concise_pid"
+else
+    run_setting "${GPUS[0]}" typed_feedback
+    run_setting "${GPUS[0]}" concise_typed_feedback
+fi
+
+echo "Finished. Results are under output/vstar/one_shot_reference_repair/temp_test/."

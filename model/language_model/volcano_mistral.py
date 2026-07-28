@@ -138,6 +138,10 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
         self.output_img_id = -100
         self.regression_weight = 1.0
         self.no_bind = False
+        # Scoped by ``condition_completion`` for feature-only REFbind
+        # ablations.  Values are one-based EOC occurrences in the complete
+        # text sequence currently decoded by ``generate``.
+        self._skip_refbind_eoc_occurrences = set()
     
     def forward(
         self,
@@ -404,7 +408,12 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
                 model_inputs['inputs_embeds'] = next_inputs_embeds
                 all_img_tokens_mask = torch.ones(1, self.n_query).to(device=model_inputs['attention_mask'].device, dtype=model_inputs['attention_mask'].dtype)
                 model_inputs['attention_mask'] = torch.cat([model_inputs['attention_mask'], all_img_tokens_mask], dim=1)
-            if new_token_ids == self.eoc_token_id and not self.no_bind:
+            eoc_occurrence = int((original_input_ids[0] == self.eoc_token_id).sum().item())
+            skip_refbind_for_this_eoc = eoc_occurrence in getattr(
+                self, '_skip_refbind_eoc_occurrences', set()
+            )
+            if (new_token_ids == self.eoc_token_id and not self.no_bind
+                    and not skip_refbind_for_this_eoc):
                 # need bounding box detection and use box align
                 if self.sub_image_bind:
                     next_inputs_embeds, query_len = self.generate_sub_image(model_inputs, original_input_ids)
@@ -525,8 +534,24 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
             input_dict['input_images'] = [item.to(self.dtype).to(self.device) if item is not None else item for item in input_dict['input_images']]
         else:
             input_dict['input_images'] = [input_dict['input_images'].to(self.dtype).to(self.device)] if input_dict['input_images'] is not None else [None]
-        with torch.no_grad():
-            text_out = self.generate(
+        # ``suppress_refbind_generated_eoc_indices`` is a one-based index over
+        # generated EOCs, not a token offset.  It preserves the literal
+        # <coor>...</coor> text while skipping only the requested REFbind call.
+        suppress_generated_eocs = kwargs.pop('suppress_refbind_generated_eoc_indices', None)
+        prompt_eoc_count = int((input_dict['input_ids'] == self.eoc_token_id).sum().item())
+        previous_skip_eocs = self._skip_refbind_eoc_occurrences
+        if suppress_generated_eocs is None:
+            self._skip_refbind_eoc_occurrences = set()
+        else:
+            normalized_indices = {int(index) for index in suppress_generated_eocs}
+            if any(index <= 0 for index in normalized_indices):
+                raise ValueError('suppress_refbind_generated_eoc_indices must be positive')
+            self._skip_refbind_eoc_occurrences = {
+                prompt_eoc_count + index for index in normalized_indices
+            }
+        try:
+            with torch.no_grad():
+                text_out = self.generate(
                         input_ids = input_dict['input_ids'].to(self.device), # TODO unsqueeze is for bs==1
                         input_images=input_dict['input_images'] if input_dict['input_images'] is not None else [None],
                         attention_mask = input_dict['attention_mask'].to(self.device),
@@ -539,6 +564,8 @@ class VolCanoMistralForCausalLM(MistralForCausalLM, VolCanoMetaForCausalLM):
                         stopping_criteria=stopping_criteria,
                         return_dict_in_generate = True
                     )
+        finally:
+            self._skip_refbind_eoc_occurrences = previous_skip_eocs
 
         input_token_len = input_dict['input_ids'].shape[1]
         n_diff_input_output = (input_dict['input_ids'].to(self.device) != text_out.sequences[:, :input_token_len]).sum().item()
