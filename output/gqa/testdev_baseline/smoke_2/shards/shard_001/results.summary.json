@@ -1,0 +1,45 @@
+{
+  "total_records": 1,
+  "successful_records": 1,
+  "error_records": 0,
+  "all_samples": {
+    "samples": 1,
+    "correct_count": 0,
+    "accuracy": 0.0,
+    "coordinate_count": 4,
+    "samples_with_coordinate": 1,
+    "mean_coordinates_per_sample": 4.0
+  },
+  "by_structural_type": {
+    "query": {
+      "samples": 1,
+      "correct_count": 0,
+      "accuracy": 0.0,
+      "coordinate_count": 4,
+      "samples_with_coordinate": 1,
+      "mean_coordinates_per_sample": 4.0
+    }
+  },
+  "by_semantic_type": {
+    "rel": {
+      "samples": 1,
+      "correct_count": 0,
+      "accuracy": 0.0,
+      "coordinate_count": 4,
+      "samples_with_coordinate": 1,
+      "mean_coordinates_per_sample": 4.0
+    }
+  },
+  "settings": {
+    "dataset": "GQA",
+    "split": "testdev_balanced",
+    "mode": "untouched_vocot_baseline",
+    "manifest_path": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/annotations/testdev_balanced/manifest.jsonl",
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0,
+    "answer_metric": "normalized_exact_match",
+    "gt_object_boxes_used": false,
+    "model_load_lock": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/testdev_baseline/smoke_2/model_load.lock"
+  }
+}

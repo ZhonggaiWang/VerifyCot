@@ -1,0 +1,86 @@
+{
+  "total_records": 1,
+  "successful_records": 1,
+  "error_records": 0,
+  "all_samples": {
+    "samples": 1,
+    "baseline_correct_count": 1,
+    "baseline_accuracy": 1.0,
+    "router_correct_count": 1,
+    "router_accuracy": 1.0,
+    "router_minus_baseline": 0.0,
+    "answer_changed_count": 0,
+    "correctness_transitions": {
+      "correct_to_wrong": 0,
+      "wrong_to_correct": 0,
+      "correct_to_correct": 1,
+      "wrong_to_wrong": 0
+    },
+    "mcnemar_exact_two_sided_pvalue": 1.0,
+    "routing": {
+      "samples": 1,
+      "samples_with_matchable_coordinate": 0,
+      "samples_routed_to_oracle_grounder": 0,
+      "coordinate_event_count": 3,
+      "matchable_coordinate_count": 0,
+      "routed_coordinate_count": 0,
+      "verified_accepted_coordinate_count": 0,
+      "unverifiable_accepted_coordinate_count": 3,
+      "route_rate_among_matchable_coordinates": null,
+      "mean_candidate_iou_to_gt_on_matchable_coordinates": null,
+      "mean_committed_iou_to_gt_on_matchable_coordinates": null,
+      "committed_iou_ge_0_5_count": 0,
+      "committed_iou_ge_0_5_rate": null,
+      "first_route_position_counts": {}
+    }
+  },
+  "by_structural_type": {
+    "verify": {
+      "samples": 1,
+      "baseline_correct_count": 1,
+      "baseline_accuracy": 1.0,
+      "router_correct_count": 1,
+      "router_accuracy": 1.0,
+      "router_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 1,
+        "wrong_to_wrong": 0
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "routing": {
+        "samples": 1,
+        "samples_with_matchable_coordinate": 0,
+        "samples_routed_to_oracle_grounder": 0,
+        "coordinate_event_count": 3,
+        "matchable_coordinate_count": 0,
+        "routed_coordinate_count": 0,
+        "verified_accepted_coordinate_count": 0,
+        "unverifiable_accepted_coordinate_count": 3,
+        "route_rate_among_matchable_coordinates": null,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": null,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": null,
+        "committed_iou_ge_0_5_count": 0,
+        "committed_iou_ge_0_5_rate": null,
+        "first_route_position_counts": {}
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "mode": "online_selective_oracle_router_grounder",
+    "manifest_path": "output/gqa/annotations/oracle_val_1000/manifest.jsonl",
+    "baseline_results": "output/gqa/online_oracle/padding_fix_v1/results.jsonl",
+    "iou_threshold": 0.1,
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "context_window_tokens": 48,
+    "alias_policy": "latest_unique_longest_explicit_alias",
+    "unmatched_policy": "unverifiable_accept",
+    "oracle_box_coordinate_system": "normalized_xyxy_on_center_padded_square",
+    "kv_cache": false
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "dataset": "GQA",
+  "split": "testdev_balanced",
+  "source_questions_path": "/data/zhonggai/GQA/testdev_balanced_questions.json",
+  "image_dir": "/data/zhonggai/GQA/images",
+  "source_question_count": 12578,
+  "manifest_record_count": 12578,
+  "unique_image_count": 398,
+  "all_answers_present": true,
+  "all_images_present": true,
+  "has_public_gt_object_boxes": false,
+  "structural_type_counts": {
+    "choose": 1129,
+    "compare": 589,
+    "logical": 1803,
+    "query": 6805,
+    "verify": 2252
+  }
+}

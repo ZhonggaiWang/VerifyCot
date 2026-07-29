@@ -1,0 +1,62 @@
+GQA Test-Dev selected: 1; evaluating: 1; resumed: 0
+Acquired model-load lock: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/testdev_baseline/smoke_2/model_load.lock
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+You are using a model of type EditGPTMistral to instantiate a model of type VolCanoMistral. This is not supported for all configurations of models and can yield errors.
+Create VIT
+/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+End Create VIT
+Create Front Projector
+End Create Front Projector
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:00<00:02,  1.45it/s]Loading checkpoint shards:  50%|█████     | 2/4 [00:01<00:01,  1.42it/s]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:02<00:00,  1.39it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.93it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.70it/s]
+Model loaded; releasing model-load lock.
+GQA Test-Dev baseline:   0%|          | 0/1 [00:00<?, ?it/s]/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/transformers/generation/configuration_utils.py:392: UserWarning: `do_sample` is set to `False`. However, `temperature` is set to `0.0` -- this flag is only used in sample-based generation modes. You should set `do_sample=True` or unset `temperature`.
+  warnings.warn(
+GQA Test-Dev baseline: 100%|██████████| 1/1 [00:00<00:00,  1.28it/s]GQA Test-Dev baseline: 100%|██████████| 1/1 [00:00<00:00,  1.28it/s]
+{
+  "total_records": 1,
+  "successful_records": 1,
+  "error_records": 0,
+  "all_samples": {
+    "samples": 1,
+    "correct_count": 1,
+    "accuracy": 1.0,
+    "coordinate_count": 0,
+    "samples_with_coordinate": 0,
+    "mean_coordinates_per_sample": 0.0
+  },
+  "by_structural_type": {
+    "verify": {
+      "samples": 1,
+      "correct_count": 1,
+      "accuracy": 1.0,
+      "coordinate_count": 0,
+      "samples_with_coordinate": 0,
+      "mean_coordinates_per_sample": 0.0
+    }
+  },
+  "by_semantic_type": {
+    "global": {
+      "samples": 1,
+      "correct_count": 1,
+      "accuracy": 1.0,
+      "coordinate_count": 0,
+      "samples_with_coordinate": 0,
+      "mean_coordinates_per_sample": 0.0
+    }
+  },
+  "settings": {
+    "dataset": "GQA",
+    "split": "testdev_balanced",
+    "mode": "untouched_vocot_baseline",
+    "manifest_path": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/annotations/testdev_balanced/manifest.jsonl",
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0,
+    "answer_metric": "normalized_exact_match",
+    "gt_object_boxes_used": false,
+    "model_load_lock": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/testdev_baseline/smoke_2/model_load.lock"
+  }
+}
+Per-example results: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/testdev_baseline/smoke_2/shards/shard_000/results.jsonl
+Summary: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/testdev_baseline/smoke_2/shards/shard_000/results.summary.json

@@ -1,0 +1,240 @@
+{
+  "total_records": 497,
+  "successful_records": 497,
+  "error_records": 0,
+  "all_samples": {
+    "samples": 497,
+    "baseline_correct_count": 373,
+    "baseline_accuracy": 0.7505030181086519,
+    "router_correct_count": 386,
+    "router_accuracy": 0.7766599597585513,
+    "router_minus_baseline": 0.026156941649899398,
+    "answer_changed_count": 17,
+    "correctness_transitions": {
+      "correct_to_wrong": 0,
+      "wrong_to_correct": 13,
+      "correct_to_correct": 373,
+      "wrong_to_wrong": 111
+    },
+    "mcnemar_exact_two_sided_pvalue": 0.000244140625,
+    "routing": {
+      "samples": 497,
+      "samples_with_matchable_coordinate": 474,
+      "samples_routed_to_oracle_grounder": 130,
+      "coordinate_event_count": 1503,
+      "matchable_coordinate_count": 1105,
+      "routed_coordinate_count": 143,
+      "verified_accepted_coordinate_count": 962,
+      "unverifiable_accepted_coordinate_count": 398,
+      "route_rate_among_matchable_coordinates": 0.12941176470588237,
+      "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6292911331593254,
+      "mean_committed_iou_to_gt_on_matchable_coordinates": 0.757079765592776,
+      "committed_iou_ge_0_5_count": 914,
+      "committed_iou_ge_0_5_rate": 0.8271493212669683,
+      "first_route_position_counts": {
+        "1": 97,
+        "2": 21,
+        "3": 6,
+        "4": 6
+      }
+    }
+  },
+  "by_structural_type": {
+    "choose": {
+      "samples": 70,
+      "baseline_correct_count": 59,
+      "baseline_accuracy": 0.8428571428571429,
+      "router_correct_count": 66,
+      "router_accuracy": 0.9428571428571428,
+      "router_minus_baseline": 0.1,
+      "answer_changed_count": 7,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 7,
+        "correct_to_correct": 59,
+        "wrong_to_wrong": 4
+      },
+      "mcnemar_exact_two_sided_pvalue": 0.015625,
+      "routing": {
+        "samples": 70,
+        "samples_with_matchable_coordinate": 63,
+        "samples_routed_to_oracle_grounder": 23,
+        "coordinate_event_count": 184,
+        "matchable_coordinate_count": 152,
+        "routed_coordinate_count": 26,
+        "verified_accepted_coordinate_count": 126,
+        "unverifiable_accepted_coordinate_count": 32,
+        "route_rate_among_matchable_coordinates": 0.17105263157894737,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.5839729376465896,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7540576050352318,
+        "committed_iou_ge_0_5_count": 119,
+        "committed_iou_ge_0_5_rate": 0.7828947368421053,
+        "first_route_position_counts": {
+          "1": 15,
+          "2": 5,
+          "3": 3
+        }
+      }
+    },
+    "compare": {
+      "samples": 14,
+      "baseline_correct_count": 11,
+      "baseline_accuracy": 0.7857142857142857,
+      "router_correct_count": 11,
+      "router_accuracy": 0.7857142857142857,
+      "router_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 11,
+        "wrong_to_wrong": 3
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "routing": {
+        "samples": 14,
+        "samples_with_matchable_coordinate": 14,
+        "samples_routed_to_oracle_grounder": 7,
+        "coordinate_event_count": 56,
+        "matchable_coordinate_count": 56,
+        "routed_coordinate_count": 9,
+        "verified_accepted_coordinate_count": 47,
+        "unverifiable_accepted_coordinate_count": 0,
+        "route_rate_among_matchable_coordinates": 0.16071428571428573,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6484527854038412,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.808407299266044,
+        "committed_iou_ge_0_5_count": 53,
+        "committed_iou_ge_0_5_rate": 0.9464285714285714,
+        "first_route_position_counts": {
+          "1": 3,
+          "2": 4
+        }
+      }
+    },
+    "logical": {
+      "samples": 58,
+      "baseline_correct_count": 49,
+      "baseline_accuracy": 0.8448275862068966,
+      "router_correct_count": 49,
+      "router_accuracy": 0.8448275862068966,
+      "router_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 49,
+        "wrong_to_wrong": 9
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "routing": {
+        "samples": 58,
+        "samples_with_matchable_coordinate": 57,
+        "samples_routed_to_oracle_grounder": 15,
+        "coordinate_event_count": 194,
+        "matchable_coordinate_count": 182,
+        "routed_coordinate_count": 15,
+        "verified_accepted_coordinate_count": 167,
+        "unverifiable_accepted_coordinate_count": 12,
+        "route_rate_among_matchable_coordinates": 0.08241758241758242,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.7125232970948961,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7939560243612969,
+        "committed_iou_ge_0_5_count": 164,
+        "committed_iou_ge_0_5_rate": 0.9010989010989011,
+        "first_route_position_counts": {
+          "1": 12,
+          "2": 3
+        }
+      }
+    },
+    "query": {
+      "samples": 230,
+      "baseline_correct_count": 145,
+      "baseline_accuracy": 0.6304347826086957,
+      "router_correct_count": 149,
+      "router_accuracy": 0.6478260869565218,
+      "router_minus_baseline": 0.017391304347826087,
+      "answer_changed_count": 8,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 4,
+        "correct_to_correct": 145,
+        "wrong_to_wrong": 81
+      },
+      "mcnemar_exact_two_sided_pvalue": 0.125,
+      "routing": {
+        "samples": 230,
+        "samples_with_matchable_coordinate": 219,
+        "samples_routed_to_oracle_grounder": 49,
+        "coordinate_event_count": 787,
+        "matchable_coordinate_count": 455,
+        "routed_coordinate_count": 52,
+        "verified_accepted_coordinate_count": 403,
+        "unverifiable_accepted_coordinate_count": 332,
+        "route_rate_among_matchable_coordinates": 0.11428571428571428,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6316222156038919,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7436372135821308,
+        "committed_iou_ge_0_5_count": 370,
+        "committed_iou_ge_0_5_rate": 0.8131868131868132,
+        "first_route_position_counts": {
+          "1": 38,
+          "2": 3,
+          "3": 2,
+          "4": 6
+        }
+      }
+    },
+    "verify": {
+      "samples": 125,
+      "baseline_correct_count": 109,
+      "baseline_accuracy": 0.872,
+      "router_correct_count": 111,
+      "router_accuracy": 0.888,
+      "router_minus_baseline": 0.016,
+      "answer_changed_count": 2,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 2,
+        "correct_to_correct": 109,
+        "wrong_to_wrong": 14
+      },
+      "mcnemar_exact_two_sided_pvalue": 0.5,
+      "routing": {
+        "samples": 125,
+        "samples_with_matchable_coordinate": 121,
+        "samples_routed_to_oracle_grounder": 36,
+        "coordinate_event_count": 282,
+        "matchable_coordinate_count": 260,
+        "routed_coordinate_count": 41,
+        "verified_accepted_coordinate_count": 219,
+        "unverifiable_accepted_coordinate_count": 22,
+        "route_rate_among_matchable_coordinates": 0.1576923076923077,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.5893158133273698,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7455024909312993,
+        "committed_iou_ge_0_5_count": 208,
+        "committed_iou_ge_0_5_rate": 0.8,
+        "first_route_position_counts": {
+          "1": 29,
+          "2": 6,
+          "3": 1
+        }
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "mode": "online_selective_oracle_router_grounder",
+    "manifest_path": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/annotations/oracle_val_1000/manifest.jsonl",
+    "baseline_results": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/online_oracle/padding_fix_v1/results.jsonl",
+    "iou_threshold": 0.1,
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "context_window_tokens": 48,
+    "alias_policy": "latest_unique_longest_explicit_alias",
+    "unmatched_policy": "unverifiable_accept",
+    "oracle_box_coordinate_system": "normalized_xyxy_on_center_padded_square",
+    "kv_cache": false,
+    "model_load_lock": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/model_load.lock",
+    "model_load_lock_timeout_seconds": 300.0
+  }
+}

@@ -1,0 +1,245 @@
+{
+  "shard_paths": [
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/shards/shard_000/results.jsonl",
+    "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/shards/shard_001/results.jsonl"
+  ],
+  "total_records": 997,
+  "successful_records": 997,
+  "errors": 0,
+  "all_samples": {
+    "samples": 997,
+    "baseline_accuracy": 0.7382146439317954,
+    "baseline_accuracy_count": 997,
+    "router_accuracy": 0.7662988966900702,
+    "router_accuracy_count": 997,
+    "router_minus_baseline": 0.028084252758274864,
+    "answer_changed_count": 44,
+    "correctness_transitions": {
+      "correct_to_wrong": 4,
+      "wrong_to_correct": 32,
+      "correct_to_correct": 732,
+      "wrong_to_wrong": 229
+    },
+    "mcnemar_exact_two_sided_pvalue": 1.941574737429619e-06,
+    "routing": {
+      "samples": 997,
+      "samples_with_matchable_coordinate": 950,
+      "samples_routed_to_oracle_grounder": 274,
+      "coordinate_event_count": 2953,
+      "matchable_coordinate_count": 2173,
+      "routed_coordinate_count": 302,
+      "verified_accepted_coordinate_count": 1871,
+      "unverifiable_accepted_coordinate_count": 780,
+      "route_rate_among_matchable_coordinates": 0.13897837091578463,
+      "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6218341579018825,
+      "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7590712404195012,
+      "committed_iou_ge_0_5_count": 1779,
+      "committed_iou_ge_0_5_rate": 0.8186838472158307,
+      "first_route_position_counts": {
+        "1": 208,
+        "2": 33,
+        "3": 19,
+        "4": 14
+      }
+    }
+  },
+  "by_structural_type": {
+    "choose": {
+      "samples": 145,
+      "baseline_accuracy": 0.8620689655172413,
+      "baseline_accuracy_count": 145,
+      "router_accuracy": 0.9448275862068966,
+      "router_accuracy_count": 145,
+      "router_minus_baseline": 0.08275862068965523,
+      "answer_changed_count": 12,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 12,
+        "correct_to_correct": 125,
+        "wrong_to_wrong": 8
+      },
+      "mcnemar_exact_two_sided_pvalue": 0.00048828125,
+      "routing": {
+        "samples": 145,
+        "samples_with_matchable_coordinate": 129,
+        "samples_routed_to_oracle_grounder": 41,
+        "coordinate_event_count": 367,
+        "matchable_coordinate_count": 311,
+        "routed_coordinate_count": 45,
+        "verified_accepted_coordinate_count": 266,
+        "unverifiable_accepted_coordinate_count": 56,
+        "route_rate_among_matchable_coordinates": 0.14469453376205788,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.582020222262147,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7255235949956539,
+        "committed_iou_ge_0_5_count": 234,
+        "committed_iou_ge_0_5_rate": 0.752411575562701,
+        "first_route_position_counts": {
+          "1": 32,
+          "2": 5,
+          "3": 4
+        }
+      }
+    },
+    "compare": {
+      "samples": 34,
+      "baseline_accuracy": 0.6176470588235294,
+      "baseline_accuracy_count": 34,
+      "router_accuracy": 0.5882352941176471,
+      "router_accuracy_count": 34,
+      "router_minus_baseline": -0.02941176470588236,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 20,
+        "wrong_to_wrong": 13
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "routing": {
+        "samples": 34,
+        "samples_with_matchable_coordinate": 34,
+        "samples_routed_to_oracle_grounder": 14,
+        "coordinate_event_count": 136,
+        "matchable_coordinate_count": 135,
+        "routed_coordinate_count": 21,
+        "verified_accepted_coordinate_count": 114,
+        "unverifiable_accepted_coordinate_count": 1,
+        "route_rate_among_matchable_coordinates": 0.15555555555555556,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.652972065377134,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.8076060864915607,
+        "committed_iou_ge_0_5_count": 122,
+        "committed_iou_ge_0_5_rate": 0.9037037037037037,
+        "first_route_position_counts": {
+          "1": 7,
+          "2": 5,
+          "3": 2
+        }
+      }
+    },
+    "logical": {
+      "samples": 120,
+      "baseline_accuracy": 0.8916666666666667,
+      "baseline_accuracy_count": 120,
+      "router_accuracy": 0.8916666666666667,
+      "router_accuracy_count": 120,
+      "router_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 107,
+        "wrong_to_wrong": 13
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "routing": {
+        "samples": 120,
+        "samples_with_matchable_coordinate": 117,
+        "samples_routed_to_oracle_grounder": 38,
+        "coordinate_event_count": 382,
+        "matchable_coordinate_count": 360,
+        "routed_coordinate_count": 40,
+        "verified_accepted_coordinate_count": 320,
+        "unverifiable_accepted_coordinate_count": 22,
+        "route_rate_among_matchable_coordinates": 0.1111111111111111,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6724307662395571,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7825403843896249,
+        "committed_iou_ge_0_5_count": 308,
+        "committed_iou_ge_0_5_rate": 0.8555555555555555,
+        "first_route_position_counts": {
+          "1": 31,
+          "2": 5,
+          "3": 2
+        }
+      }
+    },
+    "query": {
+      "samples": 462,
+      "baseline_accuracy": 0.6038961038961039,
+      "baseline_accuracy_count": 462,
+      "router_accuracy": 0.6320346320346321,
+      "router_accuracy_count": 462,
+      "router_minus_baseline": 0.02813852813852813,
+      "answer_changed_count": 25,
+      "correctness_transitions": {
+        "correct_to_wrong": 2,
+        "wrong_to_correct": 15,
+        "correct_to_correct": 277,
+        "wrong_to_wrong": 168
+      },
+      "mcnemar_exact_two_sided_pvalue": 0.002349853515625,
+      "routing": {
+        "samples": 462,
+        "samples_with_matchable_coordinate": 441,
+        "samples_routed_to_oracle_grounder": 106,
+        "coordinate_event_count": 1553,
+        "matchable_coordinate_count": 897,
+        "routed_coordinate_count": 115,
+        "verified_accepted_coordinate_count": 782,
+        "unverifiable_accepted_coordinate_count": 656,
+        "route_rate_among_matchable_coordinates": 0.1282051282051282,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6250287845231747,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7510448062406861,
+        "committed_iou_ge_0_5_count": 729,
+        "committed_iou_ge_0_5_rate": 0.8127090301003345,
+        "first_route_position_counts": {
+          "1": 81,
+          "2": 7,
+          "3": 4,
+          "4": 14
+        }
+      }
+    },
+    "verify": {
+      "samples": 236,
+      "baseline_accuracy": 0.864406779661017,
+      "baseline_accuracy_count": 236,
+      "router_accuracy": 0.8813559322033898,
+      "router_accuracy_count": 236,
+      "router_minus_baseline": 0.016949152542372836,
+      "answer_changed_count": 6,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 5,
+        "correct_to_correct": 203,
+        "wrong_to_wrong": 27
+      },
+      "mcnemar_exact_two_sided_pvalue": 0.21875,
+      "routing": {
+        "samples": 236,
+        "samples_with_matchable_coordinate": 229,
+        "samples_routed_to_oracle_grounder": 75,
+        "coordinate_event_count": 515,
+        "matchable_coordinate_count": 470,
+        "routed_coordinate_count": 81,
+        "verified_accepted_coordinate_count": 389,
+        "unverifiable_accepted_coordinate_count": 45,
+        "route_rate_among_matchable_coordinates": 0.1723404255319149,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.5943834289528063,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7646710981561794,
+        "committed_iou_ge_0_5_count": 386,
+        "committed_iou_ge_0_5_rate": 0.8212765957446808,
+        "first_route_position_counts": {
+          "1": 57,
+          "2": 11,
+          "3": 7
+        }
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "sharded": true,
+    "mode": "online_selective_oracle_router_grounder",
+    "iou_threshold": 0.1,
+    "baseline_results": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/online_oracle/padding_fix_v1/results.jsonl",
+    "unmatched_policy": "unverifiable_accept",
+    "oracle_box_coordinate_system": "normalized_xyxy_on_center_padded_square",
+    "context_window_tokens": 48,
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "temperature": 0.0,
+    "kv_cache": false,
+    "model_load_serialized": true,
+    "model_load_lock_timeout_seconds": 300
+  }
+}

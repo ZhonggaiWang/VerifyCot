@@ -18,7 +18,11 @@ import torch
 from transformers import LogitsProcessor, LogitsProcessorList, StoppingCriteria, StoppingCriteriaList
 
 from constants import DEFAULT_BOC_TOKEN, DEFAULT_EOC_TOKEN
-from utils.coordinate_intervention import find_coordinate_spans
+from utils.coordinate_intervention import (
+    OnlineOracleCoordinateLogitsProcessor,
+    box_iou,
+    find_coordinate_spans,
+)
 
 from .prompts import (
     RepairMode,
@@ -839,3 +843,156 @@ class VerifierController:
             # iteration performs a clean prefill and lets native generate_box
             # inject this accepted feature when replaying its closing EOC.
             persistent = h_t_ids + accepted_tokens
+
+    def run_selective_oracle_router(
+            self, oracle_targets: Sequence[Dict[str, Any]], iou_threshold: float,
+            max_new_tokens: int = 1024, temperature: float = 0.0,
+            context_window_tokens: int = 48) -> VerifierInferenceResult:
+        """Route only severely misaligned, explicitly matchable coordinates to GT.
+
+        This is an *oracle router plus oracle grounder* upper bound.  For each
+        model-generated coordinate, a strict local-text matcher determines
+        whether the current object reference uniquely maps to an annotated
+        target.  Unmatchable coordinates are deliberately accepted without a
+        claim that they are aligned.  For a matchable candidate ``q``:
+
+        * ``IoU(q, GT) >= iou_threshold``: commit ``q`` unchanged;
+        * ``IoU(q, GT) < iou_threshold``: commit the GT coordinate instead.
+
+        The method stops immediately after every candidate EOC, before its
+        REFbind feature can enter the model.  It then cleanly replays only the
+        committed coordinate.  Consequently the coordinate text and bound
+        feature are always identical, while a rejected candidate never enters
+        the persistent history.  Version one intentionally does not reuse KV
+        caches.
+        """
+        if not oracle_targets:
+            raise ValueError('oracle_targets must contain at least one target')
+        if not 0.0 <= float(iou_threshold) <= 1.0:
+            raise ValueError('iou_threshold must be in [0, 1]')
+        if max_new_tokens <= 0:
+            raise ValueError('max_new_tokens must be positive')
+        if context_window_tokens <= 0:
+            raise ValueError('context_window_tokens must be positive')
+
+        # Reuse the exact conservative alias policy used by the established
+        # online-oracle and natural-grounding evaluations.  Here it is used
+        # solely to decide whether a candidate is eligible for an oracle IoU
+        # check; it never forces a coordinate itself.
+        matcher = OnlineOracleCoordinateLogitsProcessor(
+            self.tokenizer,
+            prompt_length=0,
+            oracle_targets=oracle_targets,
+            context_window_tokens=context_window_tokens,
+        )
+        persistent: List[int] = []
+        events: List[Dict[str, Any]] = []
+        grounding_step = 0
+
+        while True:
+            boundary = self._run_until_coordinate(
+                persistent,
+                temporary_ids=[],
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+            )
+            if boundary.candidate_span is None:
+                response = self.tokenizer.decode(
+                    boundary.generated_ids, skip_special_tokens=False
+                )
+                return VerifierInferenceResult(
+                    response, boundary.generated_ids, 'ok', events
+                )
+
+            if boundary.candidate_box is None:
+                raise RuntimeError('coordinate boundary has no parseable candidate box')
+            grounding_step += 1
+            candidate_span = boundary.candidate_span
+            h_t_ids = boundary.generated_ids[:candidate_span[0]]
+            candidate_tokens = boundary.generated_ids[
+                candidate_span[0]:candidate_span[1] + 1
+            ]
+            candidate_box = boundary.candidate_box
+            match = matcher._new_decision(
+                boundary.generated_ids,
+                candidate_span[0],
+                grounding_step,
+            )
+
+            matched = match['decision'] == 'forced_gt_box'
+            candidate_iou = None
+            committed_box = candidate_box
+            committed_tokens = candidate_tokens
+            router_action = 'unverifiable_accept'
+            grounder_invoked = False
+
+            if matched:
+                oracle_box = self._validate_box(match['oracle_box'])
+                candidate_iou = box_iou(candidate_box, oracle_box)
+                if candidate_iou < float(iou_threshold):
+                    # The candidate feature remains uncommitted.  Force the
+                    # oracle-grounder proposal from the accepted prefix, then
+                    # commit it so its native REFbind feature is injected on
+                    # the following clean replay.
+                    forced = self._run_forced_coordinate(
+                        h_t_ids,
+                        oracle_box,
+                        max_new_tokens=max_new_tokens,
+                        temperature=temperature,
+                    )
+                    if forced.candidate_span is None or forced.candidate_box is None:
+                        raise RuntimeError('failed to construct oracle-grounder coordinate')
+                    committed_box = forced.candidate_box
+                    committed_tokens = forced.generated_ids[
+                        forced.candidate_span[0]:forced.candidate_span[1] + 1
+                    ]
+                    if not all(
+                        abs(float(left) - float(right)) <= 1e-6
+                        for left, right in zip(committed_box, oracle_box)
+                    ):
+                        raise RuntimeError('forced oracle-grounder coordinate differs from GT')
+                    router_action = 'routed_to_oracle_grounder'
+                    grounder_invoked = True
+                else:
+                    router_action = 'verified_accept'
+
+            committed_iou = (
+                None
+                if not matched else box_iou(committed_box, self._validate_box(match['oracle_box']))
+            )
+            event = {
+                'sample_id': self.sample_id,
+                'grounding_step': grounding_step,
+                'h_t_ends_before_coor': True,
+                'object_reference': self._object_reference(h_t_ids),
+                'candidate_coordinate_text': self.tokenizer.decode(
+                    candidate_tokens, skip_special_tokens=False
+                ),
+                'candidate_box': self._box_list(candidate_box),
+                'candidate_refbind_uncommitted': True,
+                'match_status': (
+                    'matched_unique_explicit_target' if matched else 'unverifiable_accept'
+                ),
+                'match_reason': match['reason'],
+                'match_context': match['context'],
+                'target_object': match['target_object'],
+                'matched_alias': match['matched_alias'],
+                'oracle_target_box': match['oracle_box'],
+                'candidate_iou_to_gt': candidate_iou,
+                'iou_threshold': float(iou_threshold),
+                'router_action': router_action,
+                'grounder_invoked': grounder_invoked,
+                'committed_coordinate_text': self.tokenizer.decode(
+                    committed_tokens, skip_special_tokens=False
+                ),
+                'committed_box': self._box_list(committed_box),
+                'committed_iou_to_gt': committed_iou,
+                'committed_feature_will_be_injected_on_clean_replay': True,
+            }
+            events.append(event)
+            self._write_event(event)
+
+            # This clean prefill is the commit point.  It replays all earlier
+            # accepted coordinates plus the selected one, so Volcano's native
+            # REFbind path receives exactly ``committed_box``.
+            persistent = h_t_ids + committed_tokens

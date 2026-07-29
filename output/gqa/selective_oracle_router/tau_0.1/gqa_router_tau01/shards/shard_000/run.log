@@ -1,0 +1,261 @@
+GQA padding-fixed baselines selected: 500; evaluating: 500; resumed: 0
+IoU threshold: 0.1; output: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/shards/shard_000/results.jsonl
+Waiting for model-load lock: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/model_load.lock (300s remaining)
+Acquired model-load lock: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/model_load.lock
+Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
+You are using a model of type EditGPTMistral to instantiate a model of type VolCanoMistral. This is not supported for all configurations of models and can yield errors.
+Create VIT
+/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/torch/_utils.py:831: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+End Create VIT
+Create Front Projector
+End Create Front Projector
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:00<00:01,  1.51it/s]Loading checkpoint shards:  50%|█████     | 2/4 [00:01<00:01,  1.56it/s]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:01<00:00,  1.49it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  2.05it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:02<00:00,  1.82it/s]
+Model loaded; releasing model-load lock.
+GQA selective oracle router:   0%|          | 0/500 [00:00<?, ?it/s]/home/zhonggai/miniconda3/envs/vocot/lib/python3.9/site-packages/transformers/generation/configuration_utils.py:392: UserWarning: `do_sample` is set to `False`. However, `temperature` is set to `0.0` -- this flag is only used in sample-based generation modes. You should set `do_sample=True` or unset `temperature`.
+  warnings.warn(
+GQA selective oracle router:   0%|          | 1/500 [00:20<2:49:16, 20.35s/it]GQA selective oracle router:   0%|          | 2/500 [00:27<1:44:15, 12.56s/it]GQA selective oracle router:   1%|          | 3/500 [00:35<1:27:24, 10.55s/it]GQA selective oracle router:   1%|          | 4/500 [00:47<1:29:56, 10.88s/it]GQA selective oracle router:   1%|          | 5/500 [00:53<1:16:56,  9.33s/it]GQA selective oracle router:   1%|          | 6/500 [00:57<1:02:36,  7.60s/it]GQA selective oracle router:   1%|▏         | 7/500 [01:00<50:02,  6.09s/it]  GQA selective oracle router:   2%|▏         | 8/500 [01:04<44:52,  5.47s/it]GQA selective oracle router:   2%|▏         | 9/500 [01:16<1:00:16,  7.37s/it]GQA selective oracle router:   2%|▏         | 10/500 [01:18<47:05,  5.77s/it] GQA selective oracle router:   2%|▏         | 11/500 [01:24<47:42,  5.85s/it]GQA selective oracle router:   2%|▏         | 12/500 [01:37<1:04:21,  7.91s/it]GQA selective oracle router:   3%|▎         | 13/500 [01:41<55:07,  6.79s/it]  GQA selective oracle router:   3%|▎         | 14/500 [01:48<56:07,  6.93s/it]GQA selective oracle router:   3%|▎         | 15/500 [02:00<1:06:45,  8.26s/it]GQA selective oracle router:   3%|▎         | 16/500 [02:04<56:37,  7.02s/it]  GQA selective oracle router:   3%|▎         | 17/500 [02:08<49:15,  6.12s/it]GQA selective oracle router:   4%|▎         | 18/500 [02:19<1:00:57,  7.59s/it]GQA selective oracle router:   4%|▍         | 19/500 [02:24<54:47,  6.84s/it]  GQA selective oracle router:   4%|▍         | 20/500 [02:28<48:01,  6.00s/it]GQA selective oracle router:   4%|▍         | 21/500 [02:40<1:02:16,  7.80s/it]GQA selective oracle router:   4%|▍         | 22/500 [02:42<48:13,  6.05s/it]  GQA selective oracle router:   5%|▍         | 23/500 [02:46<43:58,  5.53s/it]GQA selective oracle router:   5%|▍         | 24/500 [02:58<58:57,  7.43s/it]GQA selective oracle router:   5%|▌         | 25/500 [03:17<1:26:40, 10.95s/it]GQA selective oracle router:   5%|▌         | 26/500 [03:28<1:26:49, 10.99s/it]GQA selective oracle router:   5%|▌         | 27/500 [03:39<1:26:15, 10.94s/it]GQA selective oracle router:   6%|▌         | 28/500 [03:43<1:10:10,  8.92s/it]GQA selective oracle router:   6%|▌         | 29/500 [03:51<1:06:48,  8.51s/it]GQA selective oracle router:   6%|▌         | 30/500 [04:05<1:18:43, 10.05s/it]GQA selective oracle router:   6%|▌         | 31/500 [04:09<1:05:35,  8.39s/it]GQA selective oracle router:   6%|▋         | 32/500 [04:20<1:11:55,  9.22s/it]GQA selective oracle router:   7%|▋         | 33/500 [04:32<1:17:32,  9.96s/it]GQA selective oracle router:   7%|▋         | 34/500 [04:36<1:03:46,  8.21s/it]GQA selective oracle router:   7%|▋         | 35/500 [04:47<1:10:29,  9.10s/it]GQA selective oracle router:   7%|▋         | 36/500 [04:59<1:15:24,  9.75s/it]GQA selective oracle router:   7%|▋         | 37/500 [05:06<1:08:54,  8.93s/it]GQA selective oracle router:   8%|▊         | 38/500 [05:20<1:22:29, 10.71s/it]GQA selective oracle router:   8%|▊         | 39/500 [05:26<1:10:36,  9.19s/it]GQA selective oracle router:   8%|▊         | 40/500 [05:34<1:06:28,  8.67s/it]GQA selective oracle router:   8%|▊         | 41/500 [05:46<1:14:37,  9.76s/it]GQA selective oracle router:   8%|▊         | 42/500 [05:53<1:07:57,  8.90s/it]GQA selective oracle router:   9%|▊         | 43/500 [05:58<59:49,  7.85s/it]  GQA selective oracle router:   9%|▉         | 44/500 [06:02<51:29,  6.78s/it]GQA selective oracle router:   9%|▉         | 45/500 [06:13<1:00:19,  7.96s/it]GQA selective oracle router:   9%|▉         | 46/500 [06:30<1:20:27, 10.63s/it]GQA selective oracle router:   9%|▉         | 47/500 [06:44<1:27:50, 11.64s/it]GQA selective oracle router:  10%|▉         | 48/500 [06:55<1:27:25, 11.60s/it]GQA selective oracle router:  10%|▉         | 49/500 [07:07<1:26:34, 11.52s/it]GQA selective oracle router:  10%|█         | 50/500 [07:11<1:09:33,  9.28s/it]GQA selective oracle router:  10%|█         | 51/500 [07:17<1:01:49,  8.26s/it]GQA selective oracle router:  10%|█         | 52/500 [07:27<1:07:16,  9.01s/it]GQA selective oracle router:  11%|█         | 53/500 [07:32<57:39,  7.74s/it]  GQA selective oracle router:  11%|█         | 54/500 [07:39<55:54,  7.52s/it]GQA selective oracle router:  11%|█         | 55/500 [07:44<50:20,  6.79s/it]GQA selective oracle router:  11%|█         | 56/500 [07:49<45:48,  6.19s/it]GQA selective oracle router:  11%|█▏        | 57/500 [07:50<33:31,  4.54s/it]GQA selective oracle router:  12%|█▏        | 58/500 [07:57<40:20,  5.48s/it]GQA selective oracle router:  12%|█▏        | 59/500 [08:04<41:39,  5.67s/it]GQA selective oracle router:  12%|█▏        | 60/500 [08:12<47:57,  6.54s/it]GQA selective oracle router:  12%|█▏        | 61/500 [08:23<57:49,  7.90s/it]GQA selective oracle router:  12%|█▏        | 62/500 [08:30<55:54,  7.66s/it]GQA selective oracle router:  13%|█▎        | 63/500 [08:35<48:10,  6.61s/it]GQA selective oracle router:  13%|█▎        | 64/500 [08:37<38:20,  5.28s/it]GQA selective oracle router:  13%|█▎        | 65/500 [08:47<50:17,  6.94s/it]GQA selective oracle router:  13%|█▎        | 66/500 [08:53<46:27,  6.42s/it]GQA selective oracle router:  13%|█▎        | 67/500 [08:57<42:04,  5.83s/it]GQA selective oracle router:  14%|█▎        | 68/500 [09:01<38:35,  5.36s/it]GQA selective oracle router:  14%|█▍        | 69/500 [09:16<58:36,  8.16s/it]GQA selective oracle router:  14%|█▍        | 70/500 [09:21<51:37,  7.20s/it]GQA selective oracle router:  14%|█▍        | 71/500 [09:32<58:35,  8.20s/it]GQA selective oracle router:  14%|█▍        | 72/500 [09:43<1:04:18,  9.01s/it]GQA selective oracle router:  15%|█▍        | 73/500 [09:48<56:00,  7.87s/it]  GQA selective oracle router:  15%|█▍        | 74/500 [10:03<1:12:33, 10.22s/it]GQA selective oracle router:  15%|█▌        | 75/500 [10:15<1:14:27, 10.51s/it]GQA selective oracle router:  15%|█▌        | 76/500 [10:19<1:02:04,  8.78s/it]GQA selective oracle router:  15%|█▌        | 77/500 [10:23<51:57,  7.37s/it]  GQA selective oracle router:  16%|█▌        | 78/500 [10:39<1:09:27,  9.88s/it]GQA selective oracle router:  16%|█▌        | 79/500 [10:51<1:13:34, 10.49s/it]GQA selective oracle router:  16%|█▌        | 80/500 [10:56<1:01:43,  8.82s/it]GQA selective oracle router:  16%|█▌        | 81/500 [11:08<1:07:24,  9.65s/it]GQA selective oracle router:  16%|█▋        | 82/500 [11:15<1:02:37,  8.99s/it]GQA selective oracle router:  17%|█▋        | 83/500 [11:19<52:29,  7.55s/it]  GQA selective oracle router:  17%|█▋        | 84/500 [11:24<46:45,  6.75s/it]GQA selective oracle router:  17%|█▋        | 85/500 [11:35<55:56,  8.09s/it]GQA selective oracle router:  17%|█▋        | 86/500 [11:41<49:51,  7.23s/it]GQA selective oracle router:  17%|█▋        | 87/500 [11:51<57:06,  8.30s/it]GQA selective oracle router:  18%|█▊        | 88/500 [11:59<54:42,  7.97s/it]GQA selective oracle router:  18%|█▊        | 89/500 [12:03<48:10,  7.03s/it]GQA selective oracle router:  18%|█▊        | 90/500 [12:20<1:07:23,  9.86s/it]GQA selective oracle router:  18%|█▊        | 91/500 [12:24<55:55,  8.20s/it]  GQA selective oracle router:  18%|█▊        | 92/500 [12:35<1:01:19,  9.02s/it]GQA selective oracle router:  19%|█▊        | 93/500 [12:39<51:10,  7.54s/it]  GQA selective oracle router:  19%|█▉        | 94/500 [12:51<58:40,  8.67s/it]GQA selective oracle router:  19%|█▉        | 95/500 [13:02<1:05:02,  9.63s/it]GQA selective oracle router:  19%|█▉        | 96/500 [13:12<1:04:38,  9.60s/it]GQA selective oracle router:  19%|█▉        | 97/500 [13:20<1:00:28,  9.00s/it]GQA selective oracle router:  20%|█▉        | 98/500 [13:39<1:22:17, 12.28s/it]GQA selective oracle router:  20%|█▉        | 99/500 [13:50<1:18:49, 11.80s/it]GQA selective oracle router:  20%|██        | 100/500 [13:54<1:03:09,  9.47s/it]GQA selective oracle router:  20%|██        | 101/500 [14:03<1:01:41,  9.28s/it]GQA selective oracle router:  20%|██        | 102/500 [14:19<1:14:43, 11.26s/it]GQA selective oracle router:  21%|██        | 103/500 [14:26<1:07:05, 10.14s/it]GQA selective oracle router:  21%|██        | 104/500 [14:33<1:00:52,  9.22s/it]GQA selective oracle router:  21%|██        | 105/500 [14:40<56:12,  8.54s/it]  GQA selective oracle router:  21%|██        | 106/500 [14:48<53:33,  8.16s/it]GQA selective oracle router:  21%|██▏       | 107/500 [14:52<46:08,  7.04s/it]GQA selective oracle router:  22%|██▏       | 108/500 [14:59<45:44,  7.00s/it]GQA selective oracle router:  22%|██▏       | 109/500 [15:06<45:01,  6.91s/it]GQA selective oracle router:  22%|██▏       | 110/500 [15:21<1:01:05,  9.40s/it]GQA selective oracle router:  22%|██▏       | 111/500 [15:32<1:04:29,  9.95s/it]GQA selective oracle router:  22%|██▏       | 112/500 [15:37<54:20,  8.40s/it]  GQA selective oracle router:  23%|██▎       | 113/500 [15:42<48:37,  7.54s/it]GQA selective oracle router:  23%|██▎       | 114/500 [15:55<57:33,  8.95s/it]GQA selective oracle router:  23%|██▎       | 115/500 [16:00<50:16,  7.84s/it]GQA selective oracle router:  23%|██▎       | 116/500 [16:11<57:03,  8.91s/it]GQA selective oracle router:  23%|██▎       | 117/500 [16:17<49:50,  7.81s/it]GQA selective oracle router:  24%|██▎       | 118/500 [16:27<55:30,  8.72s/it]GQA selective oracle router:  24%|██▍       | 119/500 [16:33<49:57,  7.87s/it]GQA selective oracle router:  24%|██▍       | 120/500 [16:38<43:17,  6.84s/it]GQA selective oracle router:  24%|██▍       | 121/500 [16:48<49:13,  7.79s/it]GQA selective oracle router:  24%|██▍       | 122/500 [16:53<44:09,  7.01s/it]GQA selective oracle router:  25%|██▍       | 123/500 [16:58<40:42,  6.48s/it]GQA selective oracle router:  25%|██▍       | 124/500 [17:03<36:33,  5.83s/it]GQA selective oracle router:  25%|██▌       | 125/500 [17:07<33:16,  5.32s/it]GQA selective oracle router:  25%|██▌       | 126/500 [17:14<37:43,  6.05s/it]GQA selective oracle router:  25%|██▌       | 127/500 [17:25<46:51,  7.54s/it]GQA selective oracle router:  26%|██▌       | 128/500 [17:36<53:08,  8.57s/it]GQA selective oracle router:  26%|██▌       | 129/500 [17:42<47:24,  7.67s/it]GQA selective oracle router:  26%|██▌       | 130/500 [17:49<46:45,  7.58s/it]GQA selective oracle router:  26%|██▌       | 131/500 [18:01<53:14,  8.66s/it]GQA selective oracle router:  26%|██▋       | 132/500 [18:06<46:27,  7.58s/it]GQA selective oracle router:  27%|██▋       | 133/500 [18:08<36:28,  5.96s/it]GQA selective oracle router:  27%|██▋       | 134/500 [18:14<37:31,  6.15s/it]GQA selective oracle router:  27%|██▋       | 135/500 [18:27<50:06,  8.24s/it]GQA selective oracle router:  27%|██▋       | 136/500 [18:33<44:29,  7.33s/it]GQA selective oracle router:  27%|██▋       | 137/500 [18:44<51:00,  8.43s/it]GQA selective oracle router:  28%|██▊       | 138/500 [18:55<55:26,  9.19s/it]GQA selective oracle router:  28%|██▊       | 139/500 [18:59<46:34,  7.74s/it]GQA selective oracle router:  28%|██▊       | 140/500 [19:05<43:05,  7.18s/it]GQA selective oracle router:  28%|██▊       | 141/500 [19:09<37:32,  6.27s/it]GQA selective oracle router:  28%|██▊       | 142/500 [19:14<35:04,  5.88s/it]GQA selective oracle router:  29%|██▊       | 143/500 [19:22<39:04,  6.57s/it]GQA selective oracle router:  29%|██▉       | 144/500 [19:34<48:06,  8.11s/it]GQA selective oracle router:  29%|██▉       | 145/500 [19:39<43:31,  7.36s/it]GQA selective oracle router:  29%|██▉       | 146/500 [19:44<37:39,  6.38s/it]GQA selective oracle router:  29%|██▉       | 147/500 [19:51<39:10,  6.66s/it]GQA selective oracle router:  30%|██▉       | 148/500 [19:55<34:39,  5.91s/it]GQA selective oracle router:  30%|██▉       | 149/500 [20:03<37:37,  6.43s/it]GQA selective oracle router:  30%|███       | 150/500 [20:15<47:13,  8.09s/it]GQA selective oracle router:  30%|███       | 151/500 [20:19<39:50,  6.85s/it]GQA selective oracle router:  30%|███       | 152/500 [20:23<35:26,  6.11s/it]GQA selective oracle router:  31%|███       | 153/500 [20:41<55:04,  9.52s/it]GQA selective oracle router:  31%|███       | 154/500 [20:47<49:38,  8.61s/it]GQA selective oracle router:  31%|███       | 155/500 [20:52<44:00,  7.65s/it]GQA selective oracle router:  31%|███       | 156/500 [20:57<38:04,  6.64s/it]GQA selective oracle router:  31%|███▏      | 157/500 [21:08<45:53,  8.03s/it]GQA selective oracle router:  32%|███▏      | 158/500 [21:13<40:29,  7.10s/it]GQA selective oracle router:  32%|███▏      | 159/500 [21:22<43:13,  7.61s/it]GQA selective oracle router:  32%|███▏      | 160/500 [21:36<55:12,  9.74s/it]GQA selective oracle router:  32%|███▏      | 161/500 [21:45<53:21,  9.44s/it]GQA selective oracle router:  32%|███▏      | 162/500 [21:56<56:10,  9.97s/it]GQA selective oracle router:  33%|███▎      | 163/500 [22:01<46:50,  8.34s/it]GQA selective oracle router:  33%|███▎      | 164/500 [22:17<59:06, 10.55s/it]GQA selective oracle router:  33%|███▎      | 165/500 [22:24<53:38,  9.61s/it]GQA selective oracle router:  33%|███▎      | 166/500 [22:29<45:30,  8.18s/it]GQA selective oracle router:  33%|███▎      | 167/500 [22:38<46:36,  8.40s/it]GQA selective oracle router:  34%|███▎      | 168/500 [22:45<43:53,  7.93s/it]GQA selective oracle router:  34%|███▍      | 169/500 [22:49<37:39,  6.83s/it]GQA selective oracle router:  34%|███▍      | 170/500 [23:00<44:34,  8.10s/it]GQA selective oracle router:  34%|███▍      | 171/500 [23:06<40:33,  7.40s/it]GQA selective oracle router:  34%|███▍      | 172/500 [23:11<36:43,  6.72s/it]GQA selective oracle router:  35%|███▍      | 173/500 [23:22<44:02,  8.08s/it]GQA selective oracle router:  35%|███▍      | 174/500 [23:38<56:59, 10.49s/it]GQA selective oracle router:  35%|███▌      | 175/500 [23:52<1:02:21, 11.51s/it]GQA selective oracle router:  35%|███▌      | 176/500 [24:02<1:00:22, 11.18s/it]GQA selective oracle router:  35%|███▌      | 177/500 [24:13<59:24, 11.04s/it]  GQA selective oracle router:  36%|███▌      | 178/500 [24:21<53:26,  9.96s/it]GQA selective oracle router:  36%|███▌      | 179/500 [24:28<49:39,  9.28s/it]GQA selective oracle router:  36%|███▌      | 180/500 [24:33<41:43,  7.82s/it]GQA selective oracle router:  36%|███▌      | 181/500 [24:38<36:49,  6.93s/it]GQA selective oracle router:  36%|███▋      | 182/500 [24:42<32:10,  6.07s/it]GQA selective oracle router:  37%|███▋      | 183/500 [24:47<30:13,  5.72s/it]GQA selective oracle router:  37%|███▋      | 184/500 [24:51<28:49,  5.47s/it]GQA selective oracle router:  37%|███▋      | 185/500 [25:03<38:54,  7.41s/it]GQA selective oracle router:  37%|███▋      | 186/500 [25:08<33:44,  6.45s/it]GQA selective oracle router:  37%|███▋      | 187/500 [25:12<30:13,  5.79s/it]GQA selective oracle router:  38%|███▊      | 188/500 [25:19<32:39,  6.28s/it]GQA selective oracle router:  38%|███▊      | 189/500 [25:24<29:27,  5.68s/it]GQA selective oracle router:  38%|███▊      | 190/500 [25:36<39:33,  7.65s/it]GQA selective oracle router:  38%|███▊      | 191/500 [25:47<44:23,  8.62s/it]GQA selective oracle router:  38%|███▊      | 192/500 [25:58<49:00,  9.55s/it]GQA selective oracle router:  39%|███▊      | 193/500 [26:16<1:01:57, 12.11s/it]GQA selective oracle router:  39%|███▉      | 194/500 [26:21<49:52,  9.78s/it]  GQA selective oracle router:  39%|███▉      | 195/500 [26:23<38:04,  7.49s/it]GQA selective oracle router:  39%|███▉      | 196/500 [26:40<52:22, 10.34s/it]GQA selective oracle router:  39%|███▉      | 197/500 [26:51<53:35, 10.61s/it]GQA selective oracle router:  40%|███▉      | 198/500 [26:56<44:01,  8.75s/it]GQA selective oracle router:  40%|███▉      | 199/500 [27:01<38:59,  7.77s/it]GQA selective oracle router:  40%|████      | 200/500 [27:06<34:36,  6.92s/it]GQA selective oracle router:  40%|████      | 201/500 [27:10<30:23,  6.10s/it]GQA selective oracle router:  40%|████      | 202/500 [27:15<28:30,  5.74s/it]GQA selective oracle router:  41%|████      | 203/500 [27:19<26:05,  5.27s/it]GQA selective oracle router:  41%|████      | 204/500 [27:34<40:11,  8.15s/it]GQA selective oracle router:  41%|████      | 205/500 [27:46<46:05,  9.37s/it]GQA selective oracle router:  41%|████      | 206/500 [27:54<42:37,  8.70s/it]GQA selective oracle router:  41%|████▏     | 207/500 [27:59<37:05,  7.60s/it]GQA selective oracle router:  42%|████▏     | 208/500 [28:03<31:47,  6.53s/it]GQA selective oracle router:  42%|████▏     | 209/500 [28:17<42:30,  8.77s/it]GQA selective oracle router:  42%|████▏     | 210/500 [28:24<41:00,  8.48s/it]GQA selective oracle router:  42%|████▏     | 211/500 [28:29<35:31,  7.38s/it]GQA selective oracle router:  42%|████▏     | 212/500 [28:33<30:58,  6.45s/it]GQA selective oracle router:  43%|████▎     | 213/500 [28:38<28:14,  5.90s/it]GQA selective oracle router:  43%|████▎     | 214/500 [28:42<25:27,  5.34s/it]GQA selective oracle router:  43%|████▎     | 215/500 [28:47<24:33,  5.17s/it]GQA selective oracle router:  43%|████▎     | 216/500 [28:51<23:05,  4.88s/it]GQA selective oracle router:  43%|████▎     | 217/500 [28:56<23:41,  5.02s/it]GQA selective oracle router:  44%|████▎     | 218/500 [29:01<22:41,  4.83s/it]GQA selective oracle router:  44%|████▍     | 219/500 [29:09<26:57,  5.76s/it]GQA selective oracle router:  44%|████▍     | 220/500 [29:16<28:59,  6.21s/it]GQA selective oracle router:  44%|████▍     | 221/500 [29:23<30:17,  6.51s/it]GQA selective oracle router:  44%|████▍     | 222/500 [29:28<27:03,  5.84s/it]GQA selective oracle router:  45%|████▍     | 223/500 [29:36<31:12,  6.76s/it]GQA selective oracle router:  45%|████▍     | 224/500 [29:39<25:34,  5.56s/it]GQA selective oracle router:  45%|████▌     | 225/500 [29:43<23:26,  5.12s/it]GQA selective oracle router:  45%|████▌     | 226/500 [30:14<58:09, 12.74s/it]GQA selective oracle router:  45%|████▌     | 227/500 [30:21<50:43, 11.15s/it]GQA selective oracle router:  46%|████▌     | 228/500 [30:26<42:23,  9.35s/it]GQA selective oracle router:  46%|████▌     | 229/500 [30:30<35:01,  7.75s/it]GQA selective oracle router:  46%|████▌     | 230/500 [30:36<31:18,  6.96s/it]GQA selective oracle router:  46%|████▌     | 231/500 [30:44<32:43,  7.30s/it]GQA selective oracle router:  46%|████▋     | 232/500 [30:55<37:37,  8.42s/it]GQA selective oracle router:  47%|████▋     | 233/500 [31:01<34:08,  7.67s/it]GQA selective oracle router:  47%|████▋     | 234/500 [31:10<36:21,  8.20s/it]GQA selective oracle router:  47%|████▋     | 235/500 [31:21<40:30,  9.17s/it]GQA selective oracle router:  47%|████▋     | 236/500 [31:29<38:16,  8.70s/it]GQA selective oracle router:  47%|████▋     | 237/500 [31:42<44:04, 10.05s/it]GQA selective oracle router:  48%|████▊     | 238/500 [31:55<46:49, 10.72s/it]GQA selective oracle router:  48%|████▊     | 239/500 [32:00<40:17,  9.26s/it]GQA selective oracle router:  48%|████▊     | 240/500 [32:06<35:49,  8.27s/it]GQA selective oracle router:  48%|████▊     | 241/500 [32:09<27:57,  6.48s/it]GQA selective oracle router:  48%|████▊     | 242/500 [32:20<34:30,  8.03s/it]GQA selective oracle router:  49%|████▊     | 243/500 [32:25<29:33,  6.90s/it]GQA selective oracle router:  49%|████▉     | 244/500 [32:36<35:12,  8.25s/it]GQA selective oracle router:  49%|████▉     | 245/500 [32:41<31:35,  7.43s/it]GQA selective oracle router:  49%|████▉     | 246/500 [32:46<27:26,  6.48s/it]GQA selective oracle router:  49%|████▉     | 247/500 [32:57<33:04,  7.84s/it]GQA selective oracle router:  50%|████▉     | 248/500 [33:08<36:43,  8.74s/it]GQA selective oracle router:  50%|████▉     | 249/500 [33:12<30:48,  7.36s/it]GQA selective oracle router:  50%|█████     | 250/500 [33:16<26:58,  6.47s/it]GQA selective oracle router:  50%|█████     | 251/500 [33:25<29:13,  7.04s/it]GQA selective oracle router:  50%|█████     | 252/500 [33:29<25:31,  6.17s/it]GQA selective oracle router:  51%|█████     | 253/500 [33:40<31:18,  7.60s/it]GQA selective oracle router:  51%|█████     | 254/500 [33:55<41:20, 10.08s/it]GQA selective oracle router:  51%|█████     | 255/500 [34:00<33:53,  8.30s/it]GQA selective oracle router:  51%|█████     | 256/500 [34:07<32:08,  7.91s/it]GQA selective oracle router:  51%|█████▏    | 257/500 [34:09<25:08,  6.21s/it]GQA selective oracle router:  52%|█████▏    | 258/500 [34:14<23:32,  5.84s/it]GQA selective oracle router:  52%|█████▏    | 259/500 [34:25<30:16,  7.54s/it]GQA selective oracle router:  52%|█████▏    | 260/500 [34:32<29:25,  7.36s/it]GQA selective oracle router:  52%|█████▏    | 261/500 [34:44<34:10,  8.58s/it]GQA selective oracle router:  52%|█████▏    | 262/500 [34:50<30:51,  7.78s/it]GQA selective oracle router:  53%|█████▎    | 263/500 [34:54<26:20,  6.67s/it]GQA selective oracle router:  53%|█████▎    | 264/500 [35:05<31:24,  7.99s/it]GQA selective oracle router:  53%|█████▎    | 265/500 [35:35<57:17, 14.63s/it]GQA selective oracle router:  53%|█████▎    | 266/500 [35:39<44:56, 11.53s/it]GQA selective oracle router:  53%|█████▎    | 267/500 [35:45<38:22,  9.88s/it]GQA selective oracle router:  54%|█████▎    | 268/500 [35:49<31:43,  8.21s/it]GQA selective oracle router:  54%|█████▍    | 269/500 [36:04<39:25, 10.24s/it]GQA selective oracle router:  54%|█████▍    | 270/500 [36:13<36:51,  9.62s/it]GQA selective oracle router:  54%|█████▍    | 271/500 [36:24<38:28, 10.08s/it]GQA selective oracle router:  54%|█████▍    | 272/500 [36:28<31:40,  8.34s/it]GQA selective oracle router:  55%|█████▍    | 273/500 [36:36<30:58,  8.19s/it]GQA selective oracle router:  55%|█████▍    | 274/500 [36:43<29:34,  7.85s/it]GQA selective oracle router:  55%|█████▌    | 275/500 [36:48<26:27,  7.05s/it]GQA selective oracle router:  55%|█████▌    | 276/500 [36:54<24:31,  6.57s/it]GQA selective oracle router:  55%|█████▌    | 277/500 [36:58<21:52,  5.89s/it]GQA selective oracle router:  56%|█████▌    | 278/500 [37:11<29:27,  7.96s/it]GQA selective oracle router:  56%|█████▌    | 279/500 [37:13<22:54,  6.22s/it]GQA selective oracle router:  56%|█████▌    | 280/500 [37:18<21:39,  5.91s/it]GQA selective oracle router:  56%|█████▌    | 281/500 [37:23<20:17,  5.56s/it]GQA selective oracle router:  56%|█████▋    | 282/500 [37:33<25:47,  7.10s/it]GQA selective oracle router:  57%|█████▋    | 283/500 [37:44<29:42,  8.21s/it]GQA selective oracle router:  57%|█████▋    | 284/500 [37:49<25:26,  7.07s/it]GQA selective oracle router:  57%|█████▋    | 285/500 [38:00<29:55,  8.35s/it]GQA selective oracle router:  57%|█████▋    | 286/500 [38:09<29:56,  8.40s/it]GQA selective oracle router:  57%|█████▋    | 287/500 [38:13<25:20,  7.14s/it]GQA selective oracle router:  58%|█████▊    | 288/500 [38:23<28:47,  8.15s/it]GQA selective oracle router:  58%|█████▊    | 289/500 [38:34<31:29,  8.96s/it]GQA selective oracle router:  58%|█████▊    | 290/500 [38:41<29:08,  8.32s/it]GQA selective oracle router:  58%|█████▊    | 291/500 [38:45<24:26,  7.02s/it]GQA selective oracle router:  58%|█████▊    | 292/500 [38:49<21:19,  6.15s/it]GQA selective oracle router:  59%|█████▊    | 293/500 [38:54<19:40,  5.70s/it]GQA selective oracle router:  59%|█████▉    | 294/500 [39:06<25:56,  7.56s/it]GQA selective oracle router:  59%|█████▉    | 295/500 [39:22<34:36, 10.13s/it]GQA selective oracle router:  59%|█████▉    | 296/500 [39:26<28:58,  8.52s/it]GQA selective oracle router:  59%|█████▉    | 297/500 [39:43<36:38, 10.83s/it]GQA selective oracle router:  60%|█████▉    | 298/500 [39:48<30:38,  9.10s/it]GQA selective oracle router:  60%|█████▉    | 299/500 [39:55<28:37,  8.54s/it]GQA selective oracle router:  60%|██████    | 300/500 [40:06<31:25,  9.43s/it]GQA selective oracle router:  60%|██████    | 301/500 [40:22<37:31, 11.31s/it]GQA selective oracle router:  60%|██████    | 302/500 [40:39<42:49, 12.98s/it]GQA selective oracle router:  61%|██████    | 303/500 [40:49<39:54, 12.16s/it]GQA selective oracle router:  61%|██████    | 304/500 [41:00<38:28, 11.78s/it]GQA selective oracle router:  61%|██████    | 305/500 [41:12<38:13, 11.76s/it]GQA selective oracle router:  61%|██████    | 306/500 [41:28<42:38, 13.19s/it]GQA selective oracle router:  61%|██████▏   | 307/500 [41:40<40:36, 12.63s/it]GQA selective oracle router:  62%|██████▏   | 308/500 [41:50<38:26, 12.01s/it]GQA selective oracle router:  62%|██████▏   | 309/500 [41:58<33:38, 10.57s/it]GQA selective oracle router:  62%|██████▏   | 310/500 [42:05<30:20,  9.58s/it]GQA selective oracle router:  62%|██████▏   | 311/500 [42:14<30:07,  9.57s/it]GQA selective oracle router:  62%|██████▏   | 312/500 [42:19<25:42,  8.20s/it]GQA selective oracle router:  63%|██████▎   | 313/500 [42:30<28:12,  9.05s/it]GQA selective oracle router:  63%|██████▎   | 314/500 [42:36<24:49,  8.01s/it]GQA selective oracle router:  63%|██████▎   | 315/500 [42:49<29:29,  9.57s/it]GQA selective oracle router:  63%|██████▎   | 316/500 [42:57<27:43,  9.04s/it]GQA selective oracle router:  63%|██████▎   | 317/500 [42:59<21:16,  6.98s/it]GQA selective oracle router:  64%|██████▎   | 318/500 [43:06<21:06,  6.96s/it]GQA selective oracle router:  64%|██████▍   | 319/500 [43:12<20:09,  6.68s/it]GQA selective oracle router:  64%|██████▍   | 320/500 [43:19<20:29,  6.83s/it]GQA selective oracle router:  64%|██████▍   | 321/500 [43:25<19:29,  6.53s/it]GQA selective oracle router:  64%|██████▍   | 322/500 [43:31<19:00,  6.41s/it]GQA selective oracle router:  65%|██████▍   | 323/500 [43:48<28:08,  9.54s/it]GQA selective oracle router:  65%|██████▍   | 324/500 [43:53<23:53,  8.15s/it]GQA selective oracle router:  65%|██████▌   | 325/500 [43:57<20:25,  7.00s/it]GQA selective oracle router:  65%|██████▌   | 326/500 [44:08<23:52,  8.23s/it]GQA selective oracle router:  65%|██████▌   | 327/500 [44:11<18:37,  6.46s/it]GQA selective oracle router:  66%|██████▌   | 328/500 [44:22<22:56,  8.00s/it]GQA selective oracle router:  66%|██████▌   | 329/500 [44:27<19:36,  6.88s/it]GQA selective oracle router:  66%|██████▌   | 330/500 [44:31<17:04,  6.03s/it]GQA selective oracle router:  66%|██████▌   | 331/500 [44:42<21:37,  7.68s/it]GQA selective oracle router:  66%|██████▋   | 332/500 [44:46<18:29,  6.60s/it]GQA selective oracle router:  67%|██████▋   | 333/500 [44:51<16:29,  5.93s/it]GQA selective oracle router:  67%|██████▋   | 334/500 [44:53<13:49,  4.99s/it]GQA selective oracle router:  67%|██████▋   | 335/500 [45:08<21:50,  7.94s/it]GQA selective oracle router:  67%|██████▋   | 336/500 [45:14<19:54,  7.28s/it]GQA selective oracle router:  67%|██████▋   | 337/500 [45:18<17:16,  6.36s/it]GQA selective oracle router:  68%|██████▊   | 338/500 [45:22<15:23,  5.70s/it]GQA selective oracle router:  68%|██████▊   | 339/500 [45:36<21:36,  8.05s/it]GQA selective oracle router:  68%|██████▊   | 340/500 [45:40<18:25,  6.91s/it]GQA selective oracle router:  68%|██████▊   | 341/500 [45:43<15:09,  5.72s/it]GQA selective oracle router:  68%|██████▊   | 342/500 [45:55<19:50,  7.54s/it]GQA selective oracle router:  69%|██████▊   | 343/500 [46:03<20:31,  7.84s/it]GQA selective oracle router:  69%|██████▉   | 344/500 [46:07<17:21,  6.68s/it]GQA selective oracle router:  69%|██████▉   | 345/500 [46:19<20:56,  8.11s/it]GQA selective oracle router:  69%|██████▉   | 346/500 [46:30<23:03,  8.98s/it]GQA selective oracle router:  69%|██████▉   | 347/500 [46:35<19:56,  7.82s/it]GQA selective oracle router:  70%|██████▉   | 348/500 [46:42<19:36,  7.74s/it]GQA selective oracle router:  70%|██████▉   | 349/500 [46:58<25:22, 10.08s/it]GQA selective oracle router:  70%|███████   | 350/500 [47:09<26:03, 10.43s/it]GQA selective oracle router:  70%|███████   | 351/500 [47:14<21:42,  8.74s/it]GQA selective oracle router:  70%|███████   | 352/500 [47:21<20:13,  8.20s/it]GQA selective oracle router:  71%|███████   | 353/500 [47:28<19:23,  7.92s/it]GQA selective oracle router:  71%|███████   | 354/500 [47:32<16:28,  6.77s/it]GQA selective oracle router:  71%|███████   | 355/500 [47:37<14:28,  5.99s/it]GQA selective oracle router:  71%|███████   | 356/500 [47:42<13:45,  5.73s/it]GQA selective oracle router:  71%|███████▏  | 357/500 [47:46<12:46,  5.36s/it]GQA selective oracle router:  72%|███████▏  | 358/500 [47:53<13:50,  5.85s/it]GQA selective oracle router:  72%|███████▏  | 359/500 [48:00<14:39,  6.24s/it]GQA selective oracle router:  72%|███████▏  | 360/500 [48:11<17:35,  7.54s/it]GQA selective oracle router:  72%|███████▏  | 361/500 [48:13<13:53,  5.99s/it]GQA selective oracle router:  72%|███████▏  | 362/500 [48:19<13:26,  5.85s/it]GQA selective oracle router:  73%|███████▎  | 363/500 [48:28<15:48,  6.92s/it]GQA selective oracle router:  73%|███████▎  | 364/500 [48:33<14:24,  6.36s/it]GQA selective oracle router:  73%|███████▎  | 365/500 [48:37<12:53,  5.73s/it]GQA selective oracle router:  73%|███████▎  | 366/500 [48:42<11:40,  5.23s/it]GQA selective oracle router:  73%|███████▎  | 367/500 [48:46<11:00,  4.97s/it]GQA selective oracle router:  74%|███████▎  | 368/500 [48:51<11:12,  5.10s/it]GQA selective oracle router:  74%|███████▍  | 369/500 [48:55<10:31,  4.82s/it]GQA selective oracle router:  74%|███████▍  | 370/500 [49:00<10:05,  4.66s/it]GQA selective oracle router:  74%|███████▍  | 371/500 [49:05<10:15,  4.77s/it]GQA selective oracle router:  74%|███████▍  | 372/500 [49:20<16:53,  7.92s/it]GQA selective oracle router:  75%|███████▍  | 373/500 [49:31<18:44,  8.85s/it]GQA selective oracle router:  75%|███████▍  | 374/500 [49:42<19:47,  9.43s/it]GQA selective oracle router:  75%|███████▌  | 375/500 [49:56<22:32, 10.82s/it]GQA selective oracle router:  75%|███████▌  | 376/500 [50:27<35:02, 16.95s/it]GQA selective oracle router:  75%|███████▌  | 377/500 [50:38<31:05, 15.16s/it]GQA selective oracle router:  76%|███████▌  | 378/500 [50:42<24:11, 11.90s/it]GQA selective oracle router:  76%|███████▌  | 379/500 [50:47<19:49,  9.83s/it]GQA selective oracle router:  76%|███████▌  | 380/500 [50:59<20:29, 10.25s/it]GQA selective oracle router:  76%|███████▌  | 381/500 [51:10<20:43, 10.45s/it]GQA selective oracle router:  76%|███████▋  | 382/500 [51:14<16:54,  8.60s/it]GQA selective oracle router:  77%|███████▋  | 383/500 [51:25<18:31,  9.50s/it]GQA selective oracle router:  77%|███████▋  | 384/500 [51:33<17:01,  8.81s/it]GQA selective oracle router:  77%|███████▋  | 385/500 [51:37<14:16,  7.45s/it]GQA selective oracle router:  77%|███████▋  | 386/500 [51:52<18:31,  9.75s/it]GQA selective oracle router:  77%|███████▋  | 387/500 [52:04<19:31, 10.37s/it]GQA selective oracle router:  78%|███████▊  | 388/500 [52:09<16:22,  8.78s/it]GQA selective oracle router:  78%|███████▊  | 389/500 [52:16<15:09,  8.19s/it]GQA selective oracle router:  78%|███████▊  | 390/500 [52:20<12:50,  7.00s/it]GQA selective oracle router:  78%|███████▊  | 391/500 [52:27<12:58,  7.14s/it]GQA selective oracle router:  78%|███████▊  | 392/500 [52:41<16:09,  8.97s/it]GQA selective oracle router:  79%|███████▊  | 393/500 [52:50<16:13,  9.10s/it]GQA selective oracle router:  79%|███████▉  | 394/500 [52:59<15:47,  8.94s/it]GQA selective oracle router:  79%|███████▉  | 395/500 [53:03<13:04,  7.47s/it]GQA selective oracle router:  79%|███████▉  | 396/500 [53:07<11:13,  6.48s/it]GQA selective oracle router:  79%|███████▉  | 397/500 [53:18<13:43,  8.00s/it]GQA selective oracle router:  80%|███████▉  | 398/500 [53:24<12:32,  7.37s/it]GQA selective oracle router:  80%|███████▉  | 399/500 [53:30<11:40,  6.93s/it]GQA selective oracle router:  80%|████████  | 400/500 [53:47<16:20,  9.80s/it]GQA selective oracle router:  80%|████████  | 401/500 [53:51<13:18,  8.07s/it]GQA selective oracle router:  80%|████████  | 402/500 [53:59<13:05,  8.02s/it]GQA selective oracle router:  81%|████████  | 403/500 [54:10<14:37,  9.04s/it]GQA selective oracle router:  81%|████████  | 404/500 [54:27<18:03, 11.29s/it]GQA selective oracle router:  81%|████████  | 405/500 [54:34<15:53, 10.04s/it]GQA selective oracle router:  81%|████████  | 406/500 [54:41<14:26,  9.21s/it]GQA selective oracle router:  81%|████████▏ | 407/500 [54:52<15:07,  9.75s/it]GQA selective oracle router:  82%|████████▏ | 408/500 [54:57<12:47,  8.35s/it]GQA selective oracle router:  82%|████████▏ | 409/500 [55:08<13:54,  9.17s/it]GQA selective oracle router:  82%|████████▏ | 410/500 [55:15<12:49,  8.55s/it]GQA selective oracle router:  82%|████████▏ | 411/500 [55:23<12:28,  8.41s/it]GQA selective oracle router:  82%|████████▏ | 412/500 [55:29<10:54,  7.43s/it]GQA selective oracle router:  83%|████████▎ | 413/500 [55:32<08:50,  6.10s/it]GQA selective oracle router:  83%|████████▎ | 414/500 [55:34<07:10,  5.00s/it]GQA selective oracle router:  83%|████████▎ | 415/500 [55:41<07:51,  5.55s/it]GQA selective oracle router:  83%|████████▎ | 416/500 [55:58<12:46,  9.13s/it]GQA selective oracle router:  83%|████████▎ | 417/500 [56:06<11:51,  8.57s/it]GQA selective oracle router:  84%|████████▎ | 418/500 [56:11<10:28,  7.66s/it]GQA selective oracle router:  84%|████████▍ | 419/500 [56:15<08:54,  6.60s/it]GQA selective oracle router:  84%|████████▍ | 420/500 [56:18<07:20,  5.51s/it]GQA selective oracle router:  84%|████████▍ | 421/500 [56:20<05:58,  4.53s/it]GQA selective oracle router:  84%|████████▍ | 422/500 [56:26<06:07,  4.71s/it]GQA selective oracle router:  85%|████████▍ | 423/500 [56:37<08:48,  6.87s/it]GQA selective oracle router:  85%|████████▍ | 424/500 [56:42<07:40,  6.05s/it]GQA selective oracle router:  85%|████████▌ | 425/500 [57:10<15:46, 12.62s/it]GQA selective oracle router:  85%|████████▌ | 426/500 [57:15<12:47, 10.37s/it]GQA selective oracle router:  85%|████████▌ | 427/500 [57:20<10:35,  8.71s/it]GQA selective oracle router:  86%|████████▌ | 428/500 [57:24<08:48,  7.34s/it]GQA selective oracle router:  86%|████████▌ | 429/500 [57:41<12:12, 10.32s/it]GQA selective oracle router:  86%|████████▌ | 430/500 [57:48<10:46,  9.24s/it]GQA selective oracle router:  86%|████████▌ | 431/500 [57:50<08:21,  7.27s/it]GQA selective oracle router:  86%|████████▋ | 432/500 [58:02<09:36,  8.47s/it]GQA selective oracle router:  87%|████████▋ | 433/500 [58:07<08:22,  7.50s/it]GQA selective oracle router:  87%|████████▋ | 434/500 [58:12<07:28,  6.79s/it]GQA selective oracle router:  87%|████████▋ | 435/500 [58:16<06:30,  6.01s/it]GQA selective oracle router:  87%|████████▋ | 436/500 [58:20<05:50,  5.47s/it]GQA selective oracle router:  87%|████████▋ | 437/500 [58:32<07:38,  7.28s/it]GQA selective oracle router:  88%|████████▊ | 438/500 [58:44<08:53,  8.60s/it]GQA selective oracle router:  88%|████████▊ | 439/500 [58:56<09:58,  9.81s/it]GQA selective oracle router:  88%|████████▊ | 440/500 [59:00<08:06,  8.10s/it]GQA selective oracle router:  88%|████████▊ | 441/500 [59:12<09:01,  9.17s/it]GQA selective oracle router:  88%|████████▊ | 442/500 [59:16<07:25,  7.69s/it]GQA selective oracle router:  89%|████████▊ | 443/500 [59:20<06:18,  6.65s/it]GQA selective oracle router:  89%|████████▉ | 444/500 [59:32<07:28,  8.01s/it]GQA selective oracle router:  89%|████████▉ | 445/500 [59:36<06:15,  6.83s/it]GQA selective oracle router:  89%|████████▉ | 446/500 [59:39<05:04,  5.64s/it]GQA selective oracle router:  89%|████████▉ | 447/500 [59:41<04:04,  4.61s/it]GQA selective oracle router:  90%|████████▉ | 448/500 [59:45<03:51,  4.46s/it]GQA selective oracle router:  90%|████████▉ | 449/500 [59:53<04:37,  5.44s/it]GQA selective oracle router:  90%|█████████ | 450/500 [1:00:04<05:57,  7.14s/it]GQA selective oracle router:  90%|█████████ | 451/500 [1:00:20<08:07,  9.95s/it]GQA selective oracle router:  90%|█████████ | 452/500 [1:00:52<13:06, 16.38s/it]GQA selective oracle router:  91%|█████████ | 453/500 [1:01:04<11:49, 15.09s/it]GQA selective oracle router:  91%|█████████ | 454/500 [1:01:12<10:06, 13.18s/it]GQA selective oracle router:  91%|█████████ | 455/500 [1:01:16<07:49, 10.44s/it]GQA selective oracle router:  91%|█████████ | 456/500 [1:01:21<06:24,  8.74s/it]GQA selective oracle router:  91%|█████████▏| 457/500 [1:01:32<06:38,  9.27s/it]GQA selective oracle router:  92%|█████████▏| 458/500 [1:01:53<08:56, 12.76s/it]GQA selective oracle router:  92%|█████████▏| 459/500 [1:01:57<06:57, 10.17s/it]GQA selective oracle router:  92%|█████████▏| 460/500 [1:02:02<05:42,  8.57s/it]GQA selective oracle router:  92%|█████████▏| 461/500 [1:02:07<04:55,  7.58s/it]GQA selective oracle router:  92%|█████████▏| 462/500 [1:02:17<05:22,  8.47s/it]GQA selective oracle router:  93%|█████████▎| 463/500 [1:02:22<04:35,  7.44s/it]GQA selective oracle router:  93%|█████████▎| 464/500 [1:02:30<04:24,  7.35s/it]GQA selective oracle router:  93%|█████████▎| 465/500 [1:02:34<03:43,  6.39s/it]GQA selective oracle router:  93%|█████████▎| 466/500 [1:02:42<03:53,  6.88s/it]GQA selective oracle router:  93%|█████████▎| 467/500 [1:02:52<04:25,  8.03s/it]GQA selective oracle router:  94%|█████████▎| 468/500 [1:03:03<04:41,  8.79s/it]GQA selective oracle router:  94%|█████████▍| 469/500 [1:03:05<03:28,  6.74s/it]GQA selective oracle router:  94%|█████████▍| 470/500 [1:03:09<02:59,  5.97s/it]GQA selective oracle router:  94%|█████████▍| 471/500 [1:03:14<02:47,  5.78s/it]GQA selective oracle router:  94%|█████████▍| 472/500 [1:03:22<02:53,  6.20s/it]GQA selective oracle router:  95%|█████████▍| 473/500 [1:03:29<02:55,  6.49s/it]GQA selective oracle router:  95%|█████████▍| 474/500 [1:03:40<03:27,  7.98s/it]GQA selective oracle router:  95%|█████████▌| 475/500 [1:03:44<02:50,  6.81s/it]GQA selective oracle router:  95%|█████████▌| 476/500 [1:03:51<02:45,  6.91s/it]GQA selective oracle router:  95%|█████████▌| 477/500 [1:04:06<03:31,  9.17s/it]GQA selective oracle router:  96%|█████████▌| 478/500 [1:04:19<03:49, 10.44s/it]GQA selective oracle router:  96%|█████████▌| 479/500 [1:04:25<03:06,  8.86s/it]GQA selective oracle router:  96%|█████████▌| 480/500 [1:04:33<02:53,  8.65s/it]GQA selective oracle router:  96%|█████████▌| 481/500 [1:04:37<02:20,  7.37s/it]GQA selective oracle router:  96%|█████████▋| 482/500 [1:04:41<01:56,  6.47s/it]GQA selective oracle router:  97%|█████████▋| 483/500 [1:04:47<01:46,  6.29s/it]GQA selective oracle router:  97%|█████████▋| 484/500 [1:05:01<02:15,  8.46s/it]GQA selective oracle router:  97%|█████████▋| 485/500 [1:05:12<02:19,  9.29s/it]GQA selective oracle router:  97%|█████████▋| 486/500 [1:05:23<02:16,  9.74s/it]GQA selective oracle router:  97%|█████████▋| 487/500 [1:05:30<01:56,  9.00s/it]GQA selective oracle router:  98%|█████████▊| 488/500 [1:05:37<01:41,  8.49s/it]GQA selective oracle router:  98%|█████████▊| 489/500 [1:05:44<01:27,  7.95s/it]GQA selective oracle router:  98%|█████████▊| 490/500 [1:05:52<01:20,  8.03s/it]GQA selective oracle router:  98%|█████████▊| 491/500 [1:05:56<01:01,  6.86s/it]GQA selective oracle router:  98%|█████████▊| 492/500 [1:06:04<00:55,  6.97s/it]GQA selective oracle router:  99%|█████████▊| 493/500 [1:06:11<00:49,  7.01s/it]GQA selective oracle router:  99%|█████████▉| 494/500 [1:06:18<00:43,  7.17s/it]GQA selective oracle router:  99%|█████████▉| 495/500 [1:06:32<00:45,  9.05s/it]GQA selective oracle router:  99%|█████████▉| 496/500 [1:06:36<00:30,  7.57s/it]GQA selective oracle router:  99%|█████████▉| 497/500 [1:06:40<00:19,  6.65s/it]GQA selective oracle router: 100%|█████████▉| 498/500 [1:06:46<00:12,  6.27s/it]GQA selective oracle router: 100%|█████████▉| 499/500 [1:06:57<00:07,  7.80s/it]GQA selective oracle router: 100%|██████████| 500/500 [1:07:05<00:00,  7.82s/it]GQA selective oracle router: 100%|██████████| 500/500 [1:07:05<00:00,  8.05s/it]
+{
+  "total_records": 500,
+  "successful_records": 500,
+  "error_records": 0,
+  "all_samples": {
+    "samples": 500,
+    "baseline_correct_count": 363,
+    "baseline_accuracy": 0.726,
+    "router_correct_count": 378,
+    "router_accuracy": 0.756,
+    "router_minus_baseline": 0.03,
+    "answer_changed_count": 27,
+    "correctness_transitions": {
+      "correct_to_wrong": 4,
+      "wrong_to_correct": 19,
+      "correct_to_correct": 359,
+      "wrong_to_wrong": 118
+    },
+    "mcnemar_exact_two_sided_pvalue": 0.002599477767944336,
+    "routing": {
+      "samples": 500,
+      "samples_with_matchable_coordinate": 476,
+      "samples_routed_to_oracle_grounder": 144,
+      "coordinate_event_count": 1450,
+      "matchable_coordinate_count": 1068,
+      "routed_coordinate_count": 159,
+      "verified_accepted_coordinate_count": 909,
+      "unverifiable_accepted_coordinate_count": 382,
+      "route_rate_among_matchable_coordinates": 0.14887640449438203,
+      "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6141188417413226,
+      "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7611317082879746,
+      "committed_iou_ge_0_5_count": 865,
+      "committed_iou_ge_0_5_rate": 0.8099250936329588,
+      "first_route_position_counts": {
+        "1": 111,
+        "2": 12,
+        "3": 13,
+        "4": 8
+      }
+    }
+  },
+  "by_structural_type": {
+    "choose": {
+      "samples": 75,
+      "baseline_correct_count": 66,
+      "baseline_accuracy": 0.88,
+      "router_correct_count": 71,
+      "router_accuracy": 0.9466666666666667,
+      "router_minus_baseline": 0.06666666666666667,
+      "answer_changed_count": 5,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 5,
+        "correct_to_correct": 66,
+        "wrong_to_wrong": 4
+      },
+      "mcnemar_exact_two_sided_pvalue": 0.0625,
+      "routing": {
+        "samples": 75,
+        "samples_with_matchable_coordinate": 66,
+        "samples_routed_to_oracle_grounder": 18,
+        "coordinate_event_count": 183,
+        "matchable_coordinate_count": 159,
+        "routed_coordinate_count": 19,
+        "verified_accepted_coordinate_count": 140,
+        "unverifiable_accepted_coordinate_count": 24,
+        "route_rate_among_matchable_coordinates": 0.11949685534591195,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.5801534754795357,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.6982457992345492,
+        "committed_iou_ge_0_5_count": 115,
+        "committed_iou_ge_0_5_rate": 0.7232704402515723,
+        "first_route_position_counts": {
+          "1": 17,
+          "3": 1
+        }
+      }
+    },
+    "compare": {
+      "samples": 20,
+      "baseline_correct_count": 10,
+      "baseline_accuracy": 0.5,
+      "router_correct_count": 9,
+      "router_accuracy": 0.45,
+      "router_minus_baseline": -0.05,
+      "answer_changed_count": 1,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 9,
+        "wrong_to_wrong": 10
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "routing": {
+        "samples": 20,
+        "samples_with_matchable_coordinate": 20,
+        "samples_routed_to_oracle_grounder": 7,
+        "coordinate_event_count": 80,
+        "matchable_coordinate_count": 79,
+        "routed_coordinate_count": 12,
+        "verified_accepted_coordinate_count": 67,
+        "unverifiable_accepted_coordinate_count": 1,
+        "route_rate_among_matchable_coordinates": 0.1518987341772152,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6561756056113673,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.8070381381957245,
+        "committed_iou_ge_0_5_count": 69,
+        "committed_iou_ge_0_5_rate": 0.8734177215189873,
+        "first_route_position_counts": {
+          "1": 4,
+          "2": 1,
+          "3": 2
+        }
+      }
+    },
+    "logical": {
+      "samples": 62,
+      "baseline_correct_count": 58,
+      "baseline_accuracy": 0.9354838709677419,
+      "router_correct_count": 58,
+      "router_accuracy": 0.9354838709677419,
+      "router_minus_baseline": 0.0,
+      "answer_changed_count": 0,
+      "correctness_transitions": {
+        "correct_to_wrong": 0,
+        "wrong_to_correct": 0,
+        "correct_to_correct": 58,
+        "wrong_to_wrong": 4
+      },
+      "mcnemar_exact_two_sided_pvalue": 1.0,
+      "routing": {
+        "samples": 62,
+        "samples_with_matchable_coordinate": 60,
+        "samples_routed_to_oracle_grounder": 23,
+        "coordinate_event_count": 188,
+        "matchable_coordinate_count": 178,
+        "routed_coordinate_count": 25,
+        "verified_accepted_coordinate_count": 153,
+        "unverifiable_accepted_coordinate_count": 10,
+        "route_rate_among_matchable_coordinates": 0.1404494382022472,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.63143727963466,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7708682131826357,
+        "committed_iou_ge_0_5_count": 144,
+        "committed_iou_ge_0_5_rate": 0.8089887640449438,
+        "first_route_position_counts": {
+          "1": 19,
+          "2": 2,
+          "3": 2
+        }
+      }
+    },
+    "query": {
+      "samples": 232,
+      "baseline_correct_count": 134,
+      "baseline_accuracy": 0.5775862068965517,
+      "router_correct_count": 143,
+      "router_accuracy": 0.6163793103448276,
+      "router_minus_baseline": 0.03879310344827586,
+      "answer_changed_count": 17,
+      "correctness_transitions": {
+        "correct_to_wrong": 2,
+        "wrong_to_correct": 11,
+        "correct_to_correct": 132,
+        "wrong_to_wrong": 87
+      },
+      "mcnemar_exact_two_sided_pvalue": 0.0224609375,
+      "routing": {
+        "samples": 232,
+        "samples_with_matchable_coordinate": 222,
+        "samples_routed_to_oracle_grounder": 57,
+        "coordinate_event_count": 766,
+        "matchable_coordinate_count": 442,
+        "routed_coordinate_count": 63,
+        "verified_accepted_coordinate_count": 379,
+        "unverifiable_accepted_coordinate_count": 324,
+        "route_rate_among_matchable_coordinates": 0.1425339366515837,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6182414289989058,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.7586702692715517,
+        "committed_iou_ge_0_5_count": 359,
+        "committed_iou_ge_0_5_rate": 0.8122171945701357,
+        "first_route_position_counts": {
+          "1": 43,
+          "2": 4,
+          "3": 2,
+          "4": 8
+        }
+      }
+    },
+    "verify": {
+      "samples": 111,
+      "baseline_correct_count": 95,
+      "baseline_accuracy": 0.8558558558558559,
+      "router_correct_count": 97,
+      "router_accuracy": 0.8738738738738738,
+      "router_minus_baseline": 0.018018018018018018,
+      "answer_changed_count": 4,
+      "correctness_transitions": {
+        "correct_to_wrong": 1,
+        "wrong_to_correct": 3,
+        "correct_to_correct": 94,
+        "wrong_to_wrong": 13
+      },
+      "mcnemar_exact_two_sided_pvalue": 0.625,
+      "routing": {
+        "samples": 111,
+        "samples_with_matchable_coordinate": 108,
+        "samples_routed_to_oracle_grounder": 39,
+        "coordinate_event_count": 233,
+        "matchable_coordinate_count": 210,
+        "routed_coordinate_count": 40,
+        "verified_accepted_coordinate_count": 170,
+        "unverifiable_accepted_coordinate_count": 23,
+        "route_rate_among_matchable_coordinates": 0.19047619047619047,
+        "mean_candidate_iou_to_gt_on_matchable_coordinates": 0.6006576197271586,
+        "mean_committed_iou_to_gt_on_matchable_coordinates": 0.788403659482224,
+        "committed_iou_ge_0_5_count": 178,
+        "committed_iou_ge_0_5_rate": 0.8476190476190476,
+        "first_route_position_counts": {
+          "1": 28,
+          "2": 5,
+          "3": 6
+        }
+      }
+    }
+  },
+  "settings": {
+    "dataset": "gqa_val_manifest",
+    "mode": "online_selective_oracle_router_grounder",
+    "manifest_path": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/annotations/oracle_val_1000/manifest.jsonl",
+    "baseline_results": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/online_oracle/padding_fix_v1/results.jsonl",
+    "iou_threshold": 0.1,
+    "temperature": 0.0,
+    "max_new_tokens": 2048,
+    "final_max_new_tokens": 32,
+    "context_window_tokens": 48,
+    "alias_policy": "latest_unique_longest_explicit_alias",
+    "unmatched_policy": "unverifiable_accept",
+    "oracle_box_coordinate_system": "normalized_xyxy_on_center_padded_square",
+    "kv_cache": false,
+    "model_load_lock": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/model_load.lock",
+    "model_load_lock_timeout_seconds": 300.0
+  }
+}
+Verifier/router events: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/shards/shard_000/verifier_events.jsonl
+Per-example results: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/shards/shard_000/results.jsonl
+Summary: /home/zhonggai/python-work-space/VLM-GCOT/vocot/output/gqa/selective_oracle_router/tau_0.1/gqa_router_tau01/shards/shard_000/results.summary.json

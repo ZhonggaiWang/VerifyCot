@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Run GQA counterfactual or online-oracle evaluation in non-overlapping shards.
-# Usage: scripts/run_gqa_sharded_eval.sh {counterfactual|oracle}
+# Run GQA evaluations in non-overlapping shards.
+# Usage: scripts/run_gqa_sharded_eval.sh {counterfactual|oracle|selective_router|testdev_baseline}
 
 set -euo pipefail
 
 EXPERIMENT=${1:-}
 case "$EXPERIMENT" in
-  counterfactual|oracle) ;;
+  counterfactual|oracle|selective_router|testdev_baseline) ;;
   *)
-    echo "Usage: $0 {counterfactual|oracle}" >&2
+    echo "Usage: $0 {counterfactual|oracle|selective_router|testdev_baseline}" >&2
     exit 2
     ;;
 esac
@@ -17,6 +17,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 MANIFEST_PATH=${MANIFEST_PATH:-$PROJECT_ROOT/output/gqa/annotations/oracle_val_1000/manifest.jsonl}
 MODEL_PATH=${MODEL_PATH:-weights/Volcano-7b}
+VOCOT_PYTHON=${VOCOT_PYTHON:-/home/zhonggai/miniconda3/envs/vocot/bin/python}
 MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-2048}
 FINAL_MAX_NEW_TOKENS=${FINAL_MAX_NEW_TOKENS:-32}
 TEMPERATURE=${TEMPERATURE:-0.0}
@@ -44,9 +45,19 @@ PERTURB_BOX_MODE=${PERTURB_BOX_MODE:-random}
 RANDOM_BOX_MIN_SIZE=${RANDOM_BOX_MIN_SIZE:-0.05}
 RANDOM_BOX_MAX_SIZE=${RANDOM_BOX_MAX_SIZE:-0.5}
 CONTEXT_WINDOW_TOKENS=${CONTEXT_WINDOW_TOKENS:-48}
+# Selective-router-only controls.  BASELINE_RESULTS must be the padding-fixed
+# paired run because it supplies both untouched baseline answers and GT boxes.
+BASELINE_RESULTS=${BASELINE_RESULTS:-$PROJECT_ROOT/output/gqa/online_oracle/padding_fix_v1/results.jsonl}
+IOU_THRESHOLD=${IOU_THRESHOLD:-0.1}
+MODEL_LOAD_LOCK_TIMEOUT_SECONDS=${MODEL_LOAD_LOCK_TIMEOUT_SECONDS:-300}
 
 if ! command -v nvidia-smi >/dev/null 2>&1; then
   echo "nvidia-smi is required to detect idle GPUs." >&2
+  exit 1
+fi
+if [[ ! -x "$VOCOT_PYTHON" ]]; then
+  echo "vocot Python executable not found: $VOCOT_PYTHON" >&2
+  echo "Set VOCOT_PYTHON to the Python executable inside the vocot environment." >&2
   exit 1
 fi
 if [[ ! -f "$MANIFEST_PATH" ]]; then
@@ -133,8 +144,16 @@ if [[ "$EXPERIMENT" == counterfactual ]]; then
     POSITION_LABEL="${PERTURB_POSITION}_position"
   fi
   RUN_ROOT=${OUTPUT_ROOT:-$PROJECT_ROOT/output/gqa/counterfactual/$PERTURB_MODE/$POSITION_LABEL/$RUN_TAG}
-else
+elif [[ "$EXPERIMENT" == oracle ]]; then
   RUN_ROOT=${OUTPUT_ROOT:-$PROJECT_ROOT/output/gqa/online_oracle/$RUN_TAG}
+elif [[ "$EXPERIMENT" == selective_router ]]; then
+  if [[ ! -f "$BASELINE_RESULTS" ]]; then
+    echo "Padding-fixed GQA baseline results not found: $BASELINE_RESULTS" >&2
+    exit 1
+  fi
+  RUN_ROOT=${OUTPUT_ROOT:-$PROJECT_ROOT/output/gqa/selective_oracle_router/tau_${IOU_THRESHOLD}/$RUN_TAG}
+else
+  RUN_ROOT=${OUTPUT_ROOT:-$PROJECT_ROOT/output/gqa/testdev_baseline/$RUN_TAG}
 fi
 
 declare -a TASK_STARTS=()
@@ -153,6 +172,9 @@ printf 'Experiment: %s\nRun root: %s\nManifest: %s\nSamples: [%s, %s), total=%s;
 if [[ "$EXPERIMENT" == counterfactual ]]; then
   printf 'Counterfactual: mode=%s, position=%s, index=%s\n' \
     "$PERTURB_MODE" "$PERTURB_POSITION" "${PERTURB_INDEX:-none}"
+elif [[ "$EXPERIMENT" == selective_router ]]; then
+  printf 'Selective router: IoU threshold=%s; baseline=%s\n' \
+    "$IOU_THRESHOLD" "$BASELINE_RESULTS"
 fi
 
 if [[ "$DRY_RUN" == 1 ]]; then
@@ -198,6 +220,25 @@ reap_finished() {
   done
 }
 
+report_status() {
+  local gpu label result_path completed_count
+  if (( ${#ACTIVE_PID_BY_GPU[@]} == 0 )); then
+    if (( next_task < NUM_SHARDS )); then
+      echo "[$(date '+%F %T')] waiting for an allowed GPU with memory.used <= ${GPU_IDLE_MEMORY_MB} MB"
+    fi
+    return
+  fi
+  for gpu in "${!ACTIVE_PID_BY_GPU[@]}"; do
+    label=${ACTIVE_LABEL_BY_GPU[$gpu]}
+    result_path="$RUN_ROOT/shards/$label/results.jsonl"
+    completed_count=0
+    if [[ -f "$result_path" ]]; then
+      completed_count=$(wc -l < "$result_path")
+    fi
+    echo "[$(date '+%F %T')] running gpu=$gpu task=$label completed_records=$completed_count"
+  done
+}
+
 launch_task() {
   local gpu=$1
   local shard=$next_task
@@ -227,14 +268,30 @@ launch_task() {
       extra_args+=(--perturb-position "$PERTURB_POSITION")
     fi
     eval_script=eval/Oracle_experiment/gqa/evaluate_counterfactual.py
-  else
+  elif [[ "$EXPERIMENT" == oracle ]]; then
     extra_args+=(--context-window-tokens "$CONTEXT_WINDOW_TOKENS")
     eval_script=eval/Oracle_experiment/gqa/evaluate_online_oracle.py
+  elif [[ "$EXPERIMENT" == selective_router ]]; then
+    extra_args+=(
+      --baseline-results "$BASELINE_RESULTS"
+      --iou-threshold "$IOU_THRESHOLD"
+      --context-window-tokens "$CONTEXT_WINDOW_TOKENS"
+      --verifier-log "$task_dir/verifier_events.jsonl"
+      --model-load-lock "$RUN_ROOT/model_load.lock"
+      --model-load-lock-timeout-seconds "$MODEL_LOAD_LOCK_TIMEOUT_SECONDS"
+    )
+    eval_script=eval/Oracle_experiment/gqa/evaluate_selective_oracle_router.py
+  else
+    extra_args+=(
+      --model-load-lock "$RUN_ROOT/model_load.lock"
+      --model-load-lock-timeout-seconds "$MODEL_LOAD_LOCK_TIMEOUT_SECONDS"
+    )
+    eval_script=eval/Oracle_experiment/gqa/evaluate_testdev_baseline.py
   fi
   echo "[$(date '+%F %T')] launching gpu=$gpu shard=$shard start=$start count=$count"
   (
     cd "$PROJECT_ROOT"
-    CUDA_VISIBLE_DEVICES="$gpu" PYTHONUNBUFFERED=1 conda run -n vocot python -u "$eval_script" \
+    CUDA_VISIBLE_DEVICES="$gpu" PYTHONUNBUFFERED=1 "$VOCOT_PYTHON" -u "$eval_script" \
       --model-path "$MODEL_PATH" --manifest-path "$MANIFEST_PATH" --output "$output_path" \
       --start-index "$start" --max-samples "$count" \
       --max-new-tokens "$MAX_NEW_TOKENS" --final-max-new-tokens "$FINAL_MAX_NEW_TOKENS" \
@@ -265,6 +322,7 @@ while (( next_task < NUM_SHARDS || ${#ACTIVE_PID_BY_GPU[@]} > 0 )); do
     done < <(idle_gpus)
   fi
   if (( next_task < NUM_SHARDS || ${#ACTIVE_PID_BY_GPU[@]} > 0 )); then
+    report_status
     sleep "$POLL_SECONDS"
   fi
 done
@@ -278,12 +336,21 @@ if [[ "$EXPERIMENT" == counterfactual ]]; then
   settings=$(printf '{"dataset":"gqa_val_manifest","sharded":true,"perturb_mode":"%s","perturb_position":"%s","perturb_index":%s,"selection_seed":%s,"perturb_seed":%s,"iou_range":[%s,%s],"perturb_box_mode":"%s","max_new_tokens":%s,"final_max_new_tokens":%s,"temperature":%s}' \
     "$PERTURB_MODE" "$PERTURB_POSITION" "${PERTURB_INDEX:-null}" "$SELECTION_SEED" "$PERTURB_SEED" \
     "$IOU_MIN" "$IOU_MAX" "$PERTURB_BOX_MODE" "$MAX_NEW_TOKENS" "$FINAL_MAX_NEW_TOKENS" "$TEMPERATURE")
-else
+elif [[ "$EXPERIMENT" == oracle ]]; then
   settings=$(printf '{"dataset":"gqa_val_manifest","sharded":true,"oracle_mode":"online_explicit_target_oracle","oracle_box_coordinate_system":"normalized_xyxy_on_center_padded_square","context_window_tokens":%s,"max_new_tokens":%s,"final_max_new_tokens":%s,"temperature":%s}' \
     "$CONTEXT_WINDOW_TOKENS" "$MAX_NEW_TOKENS" "$FINAL_MAX_NEW_TOKENS" "$TEMPERATURE")
+elif [[ "$EXPERIMENT" == selective_router ]]; then
+  settings=$(printf '{"dataset":"gqa_val_manifest","sharded":true,"mode":"online_selective_oracle_router_grounder","iou_threshold":%s,"baseline_results":"%s","unmatched_policy":"unverifiable_accept","oracle_box_coordinate_system":"normalized_xyxy_on_center_padded_square","context_window_tokens":%s,"max_new_tokens":%s,"final_max_new_tokens":%s,"temperature":%s,"kv_cache":false,"model_load_serialized":true,"model_load_lock_timeout_seconds":%s}' \
+    "$IOU_THRESHOLD" "$BASELINE_RESULTS" "$CONTEXT_WINDOW_TOKENS" \
+    "$MAX_NEW_TOKENS" "$FINAL_MAX_NEW_TOKENS" "$TEMPERATURE" \
+    "$MODEL_LOAD_LOCK_TIMEOUT_SECONDS")
+else
+  settings=$(printf '{"dataset":"GQA","split":"testdev_balanced","sharded":true,"mode":"untouched_vocot_baseline","answer_metric":"normalized_exact_match","gt_object_boxes_used":false,"max_new_tokens":%s,"final_max_new_tokens":%s,"temperature":%s,"model_load_serialized":true,"model_load_lock_timeout_seconds":%s}' \
+    "$MAX_NEW_TOKENS" "$FINAL_MAX_NEW_TOKENS" "$TEMPERATURE" \
+    "$MODEL_LOAD_LOCK_TIMEOUT_SECONDS")
 fi
 cd "$PROJECT_ROOT"
-conda run -n vocot python eval/Oracle_experiment/gqa/aggregate_results.py \
+"$VOCOT_PYTHON" eval/Oracle_experiment/gqa/aggregate_results.py \
   --experiment "$EXPERIMENT" --shards-dir "$RUN_ROOT/shards" \
   --output "$RUN_ROOT/results.jsonl" --settings "$settings"
 echo "[$(date '+%F %T')] all GQA shards finished: $RUN_ROOT"
