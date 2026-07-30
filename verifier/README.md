@@ -1,10 +1,126 @@
-# Pre-commit object--coordinate verifier
+# Object--coordinate verifier and router
 
-This folder implements the first, oracle-only verifier experiment. It does
-not train, alter, or resize the generator, and it does not add tokenizer
-tokens. The oracle file is the only verifier backend in this version.
+The active implementation is split into three layers:
 
-## Oracle input
+- `routing_controller.py`: model-agnostic coordinate boundary, verification,
+  expert-grounder routing, and clean commit.
+- `backend.py` and `backends/`: verifier/grounder interfaces and concrete
+  backends. `backends/oracle/` is restricted to upper-bound experiments.
+- `legacy/repair_controller.py`: archived prompt-repair, one-shot corruption,
+  and sandbox REFbind ablations retained for exact reproduction.
+- `legacy/oracle_backends/`: stored and single-candidate oracle lookups used
+  only by those archived repair experiments. Root-level modules with the old
+  names are compatibility re-exports.
+
+The active controller always stops before a candidate coordinate enters
+REFbind. It then commits either the accepted candidate or the grounding
+backend's replacement; the committed coordinate always follows Volcano's
+normal REFbind path. There is no active sandbox REFbind mode.
+
+## Qwen2.5-VL verifier backend
+
+`backends/qwen25_vl/` implements a zero-shot five-way verifier. It consumes
+the source PIL image, the local object reference, and the uncommitted VoCoT
+candidate box. It deliberately does not consume the original task question:
+verification is a local object--region alignment decision.
+The model is explicitly prompted to return JSON with:
+
+```json
+{"status":"aligned","confidence":0.9}
+```
+
+The value must be exactly one of `aligned`, `wrong_object`,
+`partial_coverage`, `ambiguous`, or `unsupported`. Confidence is the model's
+self-reported value from 0.0 to 1.0.
+
+`unsupported` means that the candidate region falls on background or contains
+no visual evidence for the referenced object. It is represented internally as
+`misaligned / unsupported`, alongside `misaligned / wrong_object`; it does not
+mean that the referenced object is absent from the entire image.
+
+The candidate box is already normalized on VoCoT's center-padded square.
+The renderer reproduces `VoCoT_InputProcessor.expand2square_fn` and draws the
+box directly on that square; it never applies the original-image-to-padding
+conversion a second time.
+
+Qwen imports and model loading are lazy. The original Volcano environment can
+therefore import this backend, while `LocalQwen25VLRunner` must execute in a
+separate environment with Qwen2.5-VL support. A future process/RPC runner can
+implement the same `Qwen25VLRunner.generate(messages)` interface without
+changing the backend.
+
+## Controlled GQA verifier benchmark
+
+`benchmarks/gqa_controlled/` adapts the generated GQA JSONL records to the
+same two-image Qwen input used by the online backend: one full scene with the
+candidate marked in red, followed by a border-free crop from inside that box.
+The unmarked full image is not sent separately. The adapter reads only the
+source image, object reference, and candidate pixel box before inference.
+Target boxes, construction metadata, verdicts, and reasons are retained only
+for post-inference scoring.
+
+The adapter converts the original-image pixel box exactly once into VoCoT's
+normalized center-padded-square coordinate system. Existing benchmark renders
+are intentionally ignored by this production-faithful path; the Qwen backend
+re-renders its own red candidate rectangle.
+
+The local runner caps each input image at `512 * 28 * 28 = 401408` pixels by
+default, or about 512 merged Qwen visual tokens per image. This bounds the
+two-image verifier's activation peak. Override it with `--max-pixels` when a
+different accuracy/memory tradeoff is needed. The cap cannot compensate for a
+GPU already occupied by another process; benchmark runs should use an
+otherwise free device.
+
+Qwen rejects images whose width or height does not exceed its 28px merged
+patch factor. Candidate crops with a short side below 56px are therefore
+upscaled proportionally to a 56px short side before model input. The raw
+candidate field of view is unchanged. Result metadata records both
+`candidate_crop_size` and `model_crop_size`; use `--crop-min-side` to change
+the threshold for an ablation.
+
+The binary benchmark exposes an explicit image-context ablation:
+`--binary-image-mode crop_only` sends only the candidate crop,
+`--binary-image-mode bbox_image_only` sends only the complete scene with its
+red candidate box, and `--binary-image-mode marked_plus_crop` sends that marked
+scene followed by the identical crop. Each mode uses an explicit
+mode-appropriate prompt while retaining the same labels and decoding settings.
+
+The five-way benchmark exposes the same three protocols through
+`--five-way-image-mode`. Its prompt and message builder explicitly describe
+only the images selected by that mode; the default remains
+`marked_plus_crop` for backward compatibility.
+
+An action-oriented ablation is available through
+`--task-mode routing_four_way`. It preserves the original five-way labels in
+the result JSONL while mapping them for scoring as follows:
+
+- `aligned -> no_action`
+- `wrong_object / unsupported -> relocate`
+- `partial_coverage -> expand`
+- `ambiguous -> tighten`
+
+Select its image input with `--routing-image-mode`; the default is
+`bbox_image_only`.
+
+Run a small development smoke test in the dedicated Qwen environment:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 \
+/home/zhonggai/miniconda3/envs/qwen25/bin/python -u -m \
+  verifier.benchmarks.gqa_controlled.evaluator \
+  --split dev \
+  --limit 20 \
+  --output output/verifier_benchmark/qwen25_vl_3b/dev_smoke/results.jsonl \
+  --verbose
+```
+
+After freezing the prompt, run the held-out test split by removing `--limit`
+and changing `--split test`. The evaluator writes one resumable JSONL plus a
+`.summary.json` containing five-way accuracy, macro-F1, per-class metrics,
+confusion matrix, aligned-vs-invalid metrics, parse success, and self-reported
+confidence summaries.
+
+## Legacy oracle repair input
 
 Use JSONL (or a JSON list) with one record for every candidate that may be
 checked. The key is exactly `(sample_id, grounding_step, attempt_index)`.
@@ -19,7 +135,7 @@ oracle decision prepared for one generated coordinate from being applied to a
 different coordinate. Missing records and mismatches become `uncertain`; they
 never accept a box.
 
-## Running it
+## Running the archived prompt-repair experiment
 
 ```python
 from model.load_model import infer

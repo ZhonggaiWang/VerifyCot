@@ -1,11 +1,17 @@
-"""Shared types and validation for verifier backends."""
+"""Shared verdict types used by legacy and routing verifier backends."""
 
-from dataclasses import dataclass
-from typing import Literal, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Dict, Literal, Optional, Tuple
 
 
 Verdict = Literal['aligned', 'misaligned', 'uncertain']
-Reason = Literal['none', 'wrong_object', 'partial_coverage', 'ambiguous']
+Reason = Literal[
+    'none',
+    'wrong_object',
+    'partial_coverage',
+    'ambiguous',
+    'unsupported',
+]
 Box = Tuple[float, float, float, float]
 
 
@@ -21,6 +27,7 @@ class VerificationResult:
             ('misaligned', 'wrong_object'),
             ('misaligned', 'partial_coverage'),
             ('uncertain', 'ambiguous'),
+            ('misaligned', 'unsupported'),
         }
         if (self.verdict, self.reason) not in valid_pairs:
             raise ValueError(
@@ -36,13 +43,26 @@ class VerificationResult:
     def uncertain(cls) -> 'VerificationResult':
         return cls(verdict='uncertain', reason='ambiguous', confidence=0.0)
 
+    @classmethod
+    def unsupported(cls, confidence: float) -> 'VerificationResult':
+        return cls(
+            verdict='misaligned',
+            reason='unsupported',
+            confidence=confidence,
+        )
+
 
 @dataclass(frozen=True)
 class VerificationLookup:
-    """A verifier result plus diagnostics that must be exposed in logs."""
+    """A verifier result plus backend diagnostics exposed in event logs.
+
+    The two oracle flags remain for backward compatibility with the archived
+    prompt-repair experiments.  New backends should put backend-specific
+    diagnostics in ``metadata``.
+    """
 
     result: VerificationResult
     missing_oracle_record: bool = False
     oracle_candidate_mismatch: bool = False
     error: Optional[str] = None
-
+    metadata: Dict[str, Any] = field(default_factory=dict)

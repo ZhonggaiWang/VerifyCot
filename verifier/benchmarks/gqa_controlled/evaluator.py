@@ -1,0 +1,536 @@
+"""Run the production Qwen2.5-VL verifier on the controlled GQA benchmark."""
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any, Dict, Iterable, List
+
+from ...backends.qwen25_vl import (
+    BINARY_IMAGE_MODES,
+    DEFAULT_MAX_PIXELS,
+    DEFAULT_MIN_PIXELS,
+    DEFAULT_QWEN_CROP_MIN_SIDE,
+    LocalQwen25VLRunner,
+    Qwen25VLVerifierBackend,
+)
+from .adapter import GQAControlledExample, load_examples
+from .metrics import (
+    compute_binary_alignment_metrics,
+    compute_routing_metrics,
+    compute_verifier_metrics,
+)
+
+
+DEFAULT_BENCHMARK = Path(
+    'output/verifier_benchmark/gqa_controlled/v1/benchmark.jsonl'
+)
+DEFAULT_MODEL = Path('weights/Qwen2.5-VL-7B-Instruct')
+FIVE_WAY_TO_ROUTING = {
+    'aligned': 'no_action',
+    'wrong_object': 'relocate',
+    'unsupported': 'relocate',
+    'partial_coverage': 'expand',
+    'ambiguous': 'tighten',
+}
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            'Evaluate selectable Qwen verifier image protocols on the '
+            'controlled GQA benchmark.'
+        )
+    )
+    parser.add_argument('--benchmark', type=Path, default=DEFAULT_BENCHMARK)
+    parser.add_argument('--model-path', type=Path, default=DEFAULT_MODEL)
+    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--split', choices=('dev', 'test', 'all'), default='test')
+    parser.add_argument(
+        '--task-mode',
+        choices=('five_way', 'routing_four_way', 'binary_alignment'),
+        default='five_way',
+    )
+    parser.add_argument(
+        '--binary-image-mode',
+        choices=BINARY_IMAGE_MODES,
+        default='crop_only',
+        help=(
+            'binary ablation input: crop only, marked full scene only, or '
+            'marked full scene followed by the same crop'
+        ),
+    )
+    parser.add_argument(
+        '--five-way-image-mode',
+        choices=BINARY_IMAGE_MODES,
+        default='marked_plus_crop',
+        help=(
+            'five-way input: crop only, marked full scene only, or marked '
+            'full scene followed by the same crop'
+        ),
+    )
+    parser.add_argument(
+        '--routing-image-mode',
+        choices=BINARY_IMAGE_MODES,
+        default='bbox_image_only',
+        help=(
+            'routing four-way input: crop only, marked full scene only, or '
+            'marked full scene followed by the same crop'
+        ),
+    )
+    parser.add_argument(
+        '--crop-min-side',
+        type=int,
+        default=DEFAULT_QWEN_CROP_MIN_SIDE,
+        help='upscale candidate crops whose shortest side is below this value',
+    )
+    parser.add_argument('--device', default='cuda:0')
+    parser.add_argument('--dtype', default='bfloat16')
+    parser.add_argument('--max-new-tokens', type=int, default=64)
+    parser.add_argument(
+        '--min-pixels',
+        type=int,
+        default=DEFAULT_MIN_PIXELS,
+        help='minimum Qwen image pixels per image',
+    )
+    parser.add_argument(
+        '--max-pixels',
+        type=int,
+        default=DEFAULT_MAX_PIXELS,
+        help=(
+            'maximum Qwen image pixels per image; default corresponds to '
+            'about 512 merged visual tokens per image'
+        ),
+    )
+    parser.add_argument('--attn-implementation', default='sdpa')
+    parser.add_argument('--start-index', type=int, default=0)
+    parser.add_argument('--limit', type=int)
+    parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--overwrite', action='store_true')
+    parser.add_argument('--fail-fast', action='store_true')
+    parser.add_argument('--verbose', action='store_true')
+    return parser.parse_args()
+
+
+def _summary_path(output: Path) -> Path:
+    if output.suffix == '.jsonl':
+        return output.with_suffix('.summary.json')
+    return Path(str(output) + '.summary.json')
+
+
+def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows = []
+    with path.open('r', encoding='utf-8') as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f'invalid existing result at {path}:{line_number}: {error}'
+                ) from error
+    return rows
+
+
+def _progress(examples: Iterable[GQAControlledExample], total: int):
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        return examples
+    return tqdm(examples, total=total, desc='GQA verifier benchmark')
+
+
+def _result_record(
+        example: GQAControlledExample,
+        candidate_bbox,
+        lookup,
+) -> Dict[str, Any]:
+    status = lookup.metadata.get('status')
+    result = lookup.result
+    return {
+        'event_id': example.event_id,
+        'sample_index': example.sample_index,
+        'split': example.split,
+        'image_id': example.image_id,
+        'source_image': str(example.source_image),
+        'object_reference': example.object_reference,
+        'candidate_box_pixel_xyxy': list(example.candidate_box_pixel_xyxy),
+        'candidate_box_padded_normalized_xyxy': list(candidate_bbox),
+        'expected_status': example.expected_status,
+        'expected_verdict': example.expected_verdict,
+        'expected_reason': example.expected_reason,
+        'predicted_status': status,
+        'predicted_verdict': result.verdict,
+        'predicted_reason': result.reason,
+        'confidence': result.confidence,
+        'correct': status == example.expected_status,
+        'parse_failed': bool(lookup.metadata.get('parse_failed')),
+        'error': lookup.error,
+        'verifier_metadata': lookup.metadata,
+    }
+
+
+def _binary_result_record(
+        example: GQAControlledExample,
+        candidate_bbox,
+        lookup,
+) -> Dict[str, Any]:
+    expected_alignment = example.expected_status == 'aligned'
+    return {
+        'event_id': example.event_id,
+        'sample_index': example.sample_index,
+        'split': example.split,
+        'image_id': example.image_id,
+        'source_image': str(example.source_image),
+        'object_reference': example.object_reference,
+        'candidate_box_pixel_xyxy': list(example.candidate_box_pixel_xyxy),
+        'candidate_box_padded_normalized_xyxy': list(candidate_bbox),
+        'expected_status': example.expected_status,
+        'expected_alignment': expected_alignment,
+        'predicted_alignment': lookup.aligned,
+        'confidence': lookup.confidence,
+        'correct': lookup.aligned == expected_alignment,
+        'parse_failed': bool(lookup.metadata.get('parse_failed')),
+        'error': lookup.error,
+        'verifier_metadata': lookup.metadata,
+    }
+
+
+def _routing_result_record(
+        example: GQAControlledExample,
+        candidate_bbox,
+        lookup,
+) -> Dict[str, Any]:
+    expected_routing_status = FIVE_WAY_TO_ROUTING[example.expected_status]
+    return {
+        'event_id': example.event_id,
+        'sample_index': example.sample_index,
+        'split': example.split,
+        'image_id': example.image_id,
+        'source_image': str(example.source_image),
+        'object_reference': example.object_reference,
+        'candidate_box_pixel_xyxy': list(example.candidate_box_pixel_xyxy),
+        'candidate_box_padded_normalized_xyxy': list(candidate_bbox),
+        'expected_status': example.expected_status,
+        'expected_routing_status': expected_routing_status,
+        'predicted_routing_status': lookup.status,
+        'confidence': lookup.confidence,
+        'correct': lookup.status == expected_routing_status,
+        'parse_failed': bool(lookup.metadata.get('parse_failed')),
+        'error': lookup.error,
+        'verifier_metadata': lookup.metadata,
+    }
+
+
+def main() -> None:
+    args = parse_args()
+    if args.start_index < 0:
+        raise ValueError('--start-index must be non-negative')
+    if args.limit is not None and args.limit <= 0:
+        raise ValueError('--limit must be positive')
+    if args.max_new_tokens <= 0:
+        raise ValueError('--max-new-tokens must be positive')
+    if args.min_pixels <= 0 or args.max_pixels <= 0:
+        raise ValueError('--min-pixels and --max-pixels must be positive')
+    if args.min_pixels > args.max_pixels:
+        raise ValueError('--min-pixels must not exceed --max-pixels')
+    if args.crop_min_side <= 28:
+        raise ValueError('--crop-min-side must be greater than 28')
+    if args.resume and args.overwrite:
+        raise ValueError('--resume and --overwrite are mutually exclusive')
+    if args.task_mode != 'binary_alignment' and args.binary_image_mode != 'crop_only':
+        raise ValueError(
+            '--binary-image-mode only applies with --task-mode binary_alignment'
+        )
+    if (
+        args.task_mode != 'five_way'
+        and args.five_way_image_mode != 'marked_plus_crop'
+    ):
+        raise ValueError(
+            '--five-way-image-mode only applies with --task-mode five_way'
+        )
+    if (
+        args.task_mode != 'routing_four_way'
+        and args.routing_image_mode != 'bbox_image_only'
+    ):
+        raise ValueError(
+            '--routing-image-mode only applies with '
+            '--task-mode routing_four_way'
+        )
+
+    examples = load_examples(args.benchmark, args.split)
+    examples = examples[args.start_index:]
+    if args.limit is not None:
+        examples = examples[:args.limit]
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    existing = _read_jsonl(args.output)
+    if existing and not args.resume and not args.overwrite:
+        raise FileExistsError(
+            f'output already contains results: {args.output}; use --resume '
+            'or choose a new output path'
+        )
+    if args.overwrite:
+        existing = []
+    completed_ids = {str(row.get('event_id')) for row in existing}
+    pending = [
+        example for example in examples
+        if example.event_id not in completed_ids
+    ]
+
+    runner = LocalQwen25VLRunner(
+        model_path=str(args.model_path),
+        device=args.device,
+        dtype=args.dtype,
+        max_new_tokens=args.max_new_tokens,
+        min_pixels=args.min_pixels,
+        max_pixels=args.max_pixels,
+        attn_implementation=args.attn_implementation,
+    )
+    backend = Qwen25VLVerifierBackend(
+        runner=runner,
+        crop_min_side=args.crop_min_side,
+        parse_fail_open=True,
+    )
+
+    output_mode = 'a' if existing else 'w'
+    with args.output.open(output_mode, encoding='utf-8') as handle:
+        for example in _progress(pending, len(pending)):
+            try:
+                candidate = example.to_candidate_input()
+                if args.task_mode == 'binary_alignment':
+                    lookup = backend.verify_binary_alignment_candidate(
+                        candidate,
+                        image_mode=args.binary_image_mode,
+                    )
+                    record = _binary_result_record(
+                        example,
+                        candidate.candidate_bbox,
+                        lookup,
+                    )
+                elif args.task_mode == 'routing_four_way':
+                    lookup = backend.classify_routing_candidate(
+                        candidate,
+                        image_mode=args.routing_image_mode,
+                    )
+                    record = _routing_result_record(
+                        example,
+                        candidate.candidate_bbox,
+                        lookup,
+                    )
+                else:
+                    lookup = backend.verify_candidate(
+                        candidate,
+                        image_mode=args.five_way_image_mode,
+                    )
+                    record = _result_record(
+                        example,
+                        candidate.candidate_bbox,
+                        lookup,
+                    )
+            except Exception as error:
+                if args.fail_fast:
+                    raise
+                record = {
+                    'event_id': example.event_id,
+                    'sample_index': example.sample_index,
+                    'split': example.split,
+                    'image_id': example.image_id,
+                    'source_image': str(example.source_image),
+                    'object_reference': example.object_reference,
+                    'candidate_box_pixel_xyxy': list(
+                        example.candidate_box_pixel_xyxy
+                    ),
+                    'candidate_box_padded_normalized_xyxy': None,
+                    'expected_status': example.expected_status,
+                    'expected_verdict': example.expected_verdict,
+                    'expected_reason': example.expected_reason,
+                    'expected_routing_status': (
+                        FIVE_WAY_TO_ROUTING[example.expected_status]
+                        if args.task_mode == 'routing_four_way'
+                        else None
+                    ),
+                    'expected_alignment': (
+                        example.expected_status == 'aligned'
+                        if args.task_mode == 'binary_alignment'
+                        else None
+                    ),
+                    'predicted_alignment': None,
+                    'predicted_status': None,
+                    'predicted_routing_status': None,
+                    'predicted_verdict': None,
+                    'predicted_reason': None,
+                    'confidence': None,
+                    'correct': False,
+                    'parse_failed': False,
+                    'error': f'{type(error).__name__}: {error}',
+                    'verifier_metadata': {},
+                }
+            handle.write(json.dumps(record, ensure_ascii=False) + '\n')
+            handle.flush()
+            if args.verbose:
+                predicted = (
+                    record.get('predicted_alignment')
+                    if args.task_mode == 'binary_alignment'
+                    else (
+                        record.get('predicted_routing_status')
+                        if args.task_mode == 'routing_four_way'
+                        else record.get('predicted_status')
+                    )
+                )
+                expected = (
+                    record.get('expected_routing_status')
+                    if args.task_mode == 'routing_four_way'
+                    else example.expected_status
+                )
+                print(
+                    f"[{example.event_id}] expected={expected} "
+                    f"predicted={predicted} "
+                    f"confidence={record['confidence']} "
+                    f"correct={record['correct']}",
+                    flush=True,
+                )
+                raw_response = record['verifier_metadata'].get('raw_response')
+                if raw_response is not None:
+                    print(f'  raw: {raw_response}', flush=True)
+
+    results = _read_jsonl(args.output)
+    selected_ids = {example.event_id for example in examples}
+    selected_results = [
+        record for record in results
+        if str(record.get('event_id')) in selected_ids
+    ]
+    selected_image_mode = (
+        args.binary_image_mode
+        if args.task_mode == 'binary_alignment'
+        else (
+            args.routing_image_mode
+            if args.task_mode == 'routing_four_way'
+            else args.five_way_image_mode
+        )
+    )
+    model_images_by_mode = {
+        'crop_only': 'border-free crop from inside the candidate rectangle',
+        'bbox_image_only': 'marked full scene only',
+        'marked_plus_crop': (
+            'marked full scene followed by border-free candidate crop'
+        ),
+    }
+    summary = {
+        'benchmark': str(args.benchmark),
+        'model_path': str(args.model_path),
+        'backend': {
+            'binary_alignment': (
+                f'qwen25_vl_binary_alignment_{args.binary_image_mode}'
+            ),
+            'routing_four_way': (
+                f'qwen25_vl_routing_four_way_{args.routing_image_mode}'
+            ),
+            'five_way': (
+                f'qwen25_vl_zero_shot_five_way_{args.five_way_image_mode}'
+            ),
+        }[args.task_mode],
+        'task_mode': args.task_mode,
+        'binary_image_mode': (
+            args.binary_image_mode
+            if args.task_mode == 'binary_alignment'
+            else None
+        ),
+        'five_way_image_mode': (
+            args.five_way_image_mode
+            if args.task_mode == 'five_way'
+            else None
+        ),
+        'routing_image_mode': (
+            args.routing_image_mode
+            if args.task_mode == 'routing_four_way'
+            else None
+        ),
+        'split': args.split,
+        'start_index': args.start_index,
+        'limit': args.limit,
+        'min_pixels_per_image': args.min_pixels,
+        'max_pixels_per_image': args.max_pixels,
+        'crop_min_side': args.crop_min_side,
+        'selected_example_count': len(examples),
+        'completed_result_count': len(selected_results),
+        'input_protocol': {
+            'source_fields': [
+                'source_image',
+                'object_reference',
+                'candidate_box_pixel_xyxy',
+            ],
+            'coordinate_conversion': (
+                'original-image pixel xyxy to normalized xyxy on VoCoT '
+                'center-padded square'
+            ),
+            'image_mode': selected_image_mode,
+            'model_images': [model_images_by_mode[selected_image_mode]],
+            'supervision_not_visible_to_model': [
+                'target_box_pixel_xyxy',
+                'target_box_normalized_xyxy',
+                'candidate_target_geometry',
+                'verdict',
+                'reason',
+                'construction',
+            ],
+        },
+        'metrics': (
+            compute_binary_alignment_metrics(selected_results)
+            if args.task_mode == 'binary_alignment'
+            else (
+                compute_routing_metrics(selected_results)
+                if args.task_mode == 'routing_four_way'
+                else compute_verifier_metrics(selected_results)
+            )
+        ),
+    }
+    summary_path = _summary_path(args.output)
+    with summary_path.open('w', encoding='utf-8') as handle:
+        json.dump(summary, handle, ensure_ascii=False, indent=2)
+        handle.write('\n')
+
+    metrics = summary['metrics']
+    print(f'Results: {args.output}')
+    print(f'Summary: {summary_path}')
+    if args.task_mode == 'binary_alignment':
+        print(
+            'Binary alignment accuracy: '
+            f"{metrics['end_to_end_accuracy'] * 100:.2f}% "
+            f"({metrics['correct']}/{metrics['total']})"
+        )
+        print(f"Misalignment recall: {metrics['recall'] * 100:.2f}%")
+    elif args.task_mode == 'routing_four_way':
+        print(
+            'Routing four-way accuracy: '
+            f"{metrics['four_way']['accuracy'] * 100:.2f}% "
+            f"({metrics['four_way']['correct']}/{metrics['total']})"
+        )
+        print(
+            'Macro-F1: '
+            f"{metrics['four_way']['macro_f1'] * 100:.2f}%"
+        )
+    else:
+        print(
+            'Five-way accuracy: '
+            f"{metrics['five_way']['accuracy'] * 100:.2f}% "
+            f"({metrics['five_way']['correct']}/{metrics['total']})"
+        )
+        print(
+            'Macro-F1: '
+            f"{metrics['five_way']['macro_f1'] * 100:.2f}%"
+        )
+        print(
+            'Binary aligned-vs-invalid accuracy: '
+            f"{metrics['binary_aligned_vs_invalid']['end_to_end_accuracy'] * 100:.2f}%"
+        )
+    print(
+        'Parse success rate: '
+        f"{metrics['parse_success_rate'] * 100:.2f}%"
+    )
+
+
+if __name__ == '__main__':
+    main()

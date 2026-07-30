@@ -8,17 +8,19 @@ from pathlib import Path
 import torch
 
 from constants import DEFAULT_BOC_TOKEN, DEFAULT_EOC_TOKEN
-from verifier.controller import (
+from verifier.routing_controller import (
     _ForcePrefixProcessor,
-    _ForcePrefixSuppressNextBocProcessor,
     _StopAfterNewCoordinate,
 )
+from verifier.legacy.repair_controller import _ForcePrefixSuppressNextBocProcessor
+from verifier.routing_controller import RoutingController
 from verifier.prompts import (
     build_repair_prompt,
     build_repair_prompt_text_only_q,
 )
-from verifier.stored_oracle import StoredOracleVerifier
+from verifier.legacy import StoredOracleVerifier
 from verifier.types import VerificationResult
+from verifier.types import VerificationLookup
 
 
 class VerifierPrimitiveTests(unittest.TestCase):
@@ -34,6 +36,12 @@ class VerifierPrimitiveTests(unittest.TestCase):
             VerificationResult('aligned', 'wrong_object', 1.0)
         with self.assertRaises(ValueError):
             VerificationResult('aligned', 'none', 1.1)
+        self.assertEqual(
+            VerificationResult('misaligned', 'unsupported', 0.9).reason,
+            'unsupported',
+        )
+        with self.assertRaises(ValueError):
+            VerificationResult('uncertain', 'unsupported', 0.9)
 
     def test_oracle_lookup_and_missing_record_never_accept(self):
         path = self._oracle_file([{
@@ -111,6 +119,25 @@ class VerifierPrimitiveTests(unittest.TestCase):
         self.assertTrue(torch.isneginf(first_free[0, 9]))
         later_free = processor(torch.tensor([[1, 2, 3, 7, 4]]), scores.clone())
         self.assertFalse(torch.isneginf(later_free[0, 9]))
+
+    def test_routing_policy_routes_only_confident_misalignment(self):
+        controller = RoutingController.__new__(RoutingController)
+        controller.verifier_confidence_threshold = 0.8
+        self.assertFalse(controller._should_route(VerificationLookup(
+            VerificationResult('aligned', 'none', 1.0)
+        )))
+        self.assertFalse(controller._should_route(VerificationLookup(
+            VerificationResult('misaligned', 'wrong_object', 0.79)
+        )))
+        self.assertFalse(controller._should_route(VerificationLookup(
+            VerificationResult.uncertain()
+        )))
+        self.assertTrue(controller._should_route(VerificationLookup(
+            VerificationResult.unsupported(1.0)
+        )))
+        self.assertTrue(controller._should_route(VerificationLookup(
+            VerificationResult('misaligned', 'wrong_object', 0.8)
+        )))
 
 
 if __name__ == '__main__':

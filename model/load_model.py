@@ -24,10 +24,15 @@ from utils.coordinate_intervention import (
 )
 from utils.eval_util import extract_all_box_str
 from verifier import (
+    OracleGrounderBackend,
+    OracleIoUVerifierBackend,
+    RoutingController,
+    VerificationResult,
+)
+from verifier.legacy import (
+    LegacyRepairController,
     SingleCandidateOracleVerifier,
     StoredOracleVerifier,
-    VerificationResult,
-    VerifierController,
 )
 from model.language_model.volcano_llama import VolCanoLlamaForCausalLM,VolCanoConfig
 from model.language_model.volcano_mistral import VolCanoMistralForCausalLM, VolCanoMistralConfig
@@ -295,7 +300,7 @@ def verifier_infer(model, preprocessor, image, query, cot=True, sample_id=None,
             preprocessor, image, query, cot, conversation=conversation, options=options
         )
 
-    controller = VerifierController(
+    controller = LegacyRepairController(
         model=model,
         tokenizer=preprocessor.tokenizer,
         batch_factory=batch_factory,
@@ -334,7 +339,7 @@ def one_shot_reference_repair_infer(
             preprocessor, image, query, cot, conversation=conversation, options=options
         )
 
-    controller = VerifierController(
+    controller = LegacyRepairController(
         model=model,
         tokenizer=preprocessor.tokenizer,
         batch_factory=batch_factory,
@@ -373,7 +378,7 @@ def one_shot_reference_corruption_infer(
         )
     # The StoredOracle backend is unused in this control, but constructing the
     # shared controller keeps prefix replay/REFbind behavior identical to repair.
-    controller = VerifierController(
+    controller = LegacyRepairController(
         model=model, tokenizer=preprocessor.tokenizer, batch_factory=batch_factory,
         verifier=None, sample_id=sample_id, repair_mode='typed_feedback',
         on_failure='abort_sample', log_path=log_path,
@@ -451,7 +456,7 @@ def one_shot_natural_error_repair_infer(
             verdict='misaligned', reason='wrong_object', confidence=1.0
         ),
     )
-    controller = VerifierController(
+    controller = LegacyRepairController(
         model=model,
         tokenizer=preprocessor.tokenizer,
         batch_factory=batch_factory,
@@ -771,51 +776,53 @@ def online_oracle_infer(model, preprocessor, image, query=None, cot=True,
     return result
 
 
-def selective_oracle_router_infer(
-        model, preprocessor, image, query=None, cot=True, sample_id=None,
-        oracle_targets=None, iou_threshold=0.1, max_new_tokens=1024,
-        temperature=0.0, conversation=None, options=None,
-        context_window_tokens=48, log_path=None):
-    """Run the oracle selective-router / oracle-grounder upper bound.
+def routing_infer(
+        model, preprocessor, image, verifier_backend, grounder_backend,
+        query=None, cot=True, sample_id=None, max_new_tokens=1024,
+        temperature=0.0, conversation=None, options=None, log_path=None,
+        verifier_confidence_threshold=0.8, sample_context=None):
+    """Run generic verifier--grounder routing and validate every committed box.
 
-    Unlike :func:`online_oracle_infer`, this does not force every explicitly
-    matchable coordinate.  It first lets the model finish a candidate box,
-    measures that candidate against the uniquely matched GT target, and only
-    substitutes the GT box when ``IoU < iou_threshold``.  Every decision is
-    made before the candidate REFbind feature is committed.
+    Backend construction and experiment-specific summary fields deliberately
+    live outside this function.  This path owns only the shared inference
+    mechanics: fresh batch construction, coordinate routing, and the strict
+    equality check among coordinate text, the controller's committed box, and
+    Volcano's recorded REFbind box.
     """
     if sample_id is None:
-        raise ValueError('sample_id is required for selective_oracle_router_infer')
-    if not oracle_targets:
-        raise ValueError('oracle_targets must contain at least one annotated target')
-    if not 0.0 <= float(iou_threshold) <= 1.0:
-        raise ValueError('iou_threshold must be in [0, 1]')
+        raise ValueError('sample_id is required for routing_infer')
+    if verifier_backend is None:
+        raise ValueError('verifier_backend is required for routing_infer')
+    if grounder_backend is None:
+        raise ValueError('grounder_backend is required for routing_infer')
 
     def batch_factory():
         return _build_inference_batch(
             preprocessor, image, query, cot, conversation=conversation, options=options
         )
 
-    # ``verifier`` is deliberately unused here.  The controller supplies the
-    # clean pre-commit/replay mechanics while ``run_selective_oracle_router``
-    # performs the in-memory GT matching and IoU routing itself.
-    controller = VerifierController(
+    routing_context = dict(sample_context or {})
+    routing_context.setdefault('image', image)
+    if query is not None:
+        routing_context.setdefault('question', query)
+    routing_context.setdefault(
+        'coordinate_system',
+        'normalized_xyxy_on_center_padded_square',
+    )
+    controller = RoutingController(
         model=model,
         tokenizer=preprocessor.tokenizer,
         batch_factory=batch_factory,
-        verifier=None,
+        verifier=verifier_backend,
+        grounder=grounder_backend,
         sample_id=str(sample_id),
-        repair_mode='typed_feedback',
-        max_retries=0,
-        on_failure='abort_sample',
+        verifier_confidence_threshold=verifier_confidence_threshold,
         log_path=log_path,
+        sample_context=routing_context,
     )
-    controller_result = controller.run_selective_oracle_router(
-        oracle_targets=oracle_targets,
-        iou_threshold=iou_threshold,
+    controller_result = controller.run(
         max_new_tokens=max_new_tokens,
         temperature=temperature,
-        context_window_tokens=context_window_tokens,
     )
     generated_ids = controller_result.generated_ids
     boxes = extract_all_box_str(controller_result.response, mistral=True)
@@ -824,7 +831,7 @@ def selective_oracle_router_infer(
     )
     if len(spans) != len(boxes):
         raise RuntimeError(
-            f'selective router has {len(spans)} token coordinate spans but '
+            f'routing inference has {len(spans)} token coordinate spans but '
             f'{len(boxes)} parseable boxes'
         )
     bound_boxes = getattr(model, 'last_bound_boxes', None)
@@ -832,30 +839,80 @@ def selective_oracle_router_infer(
         bound_boxes = [list(map(float, box)) for box in bound_boxes]
         if len(bound_boxes) != len(boxes):
             raise RuntimeError(
-                f'selective router bound {len(bound_boxes)} boxes but generated '
+                f'routing inference bound {len(bound_boxes)} boxes but generated '
                 f'{len(boxes)} coordinate spans'
             )
 
     events = controller_result.events
     if len(events) != len(boxes):
         raise RuntimeError(
-            f'selective router recorded {len(events)} decisions for {len(boxes)} coordinates'
+            f'routing inference recorded {len(events)} decisions for '
+            f'{len(boxes)} coordinates'
         )
     for coordinate_index, (event, text_box) in enumerate(zip(events, boxes), 1):
         committed_box = event['committed_box']
         if committed_box is None or not _boxes_match(text_box, committed_box):
             raise RuntimeError(
-                f'selective router text box at coordinate {coordinate_index} '
+                f'routing inference text box at coordinate {coordinate_index} '
                 'does not equal its committed box'
             )
         if bound_boxes is not None and not _boxes_match(
                 bound_boxes[coordinate_index - 1], committed_box):
             raise RuntimeError(
-                f'selective router REFbind box at coordinate {coordinate_index} '
+                f'routing inference REFbind box at coordinate {coordinate_index} '
                 'does not equal its committed box'
             )
         event['verification'] = 'text_and_refbind_match_committed_box'
 
+    return {
+        'response': controller_result.response,
+        'generated_ids': generated_ids,
+        'boxes': boxes,
+        'bound_boxes': bound_boxes,
+        'finished_with_eos': bool(
+            generated_ids and generated_ids[-1] == preprocessor.tokenizer.eos_token_id
+        ),
+        'events': events,
+        'status': controller_result.status,
+    }
+
+
+def selective_oracle_router_infer(
+        model, preprocessor, image, query=None, cot=True, sample_id=None,
+        oracle_targets=None, iou_threshold=0.1, max_new_tokens=1024,
+        temperature=0.0, conversation=None, options=None,
+        context_window_tokens=48, log_path=None):
+    """Thin oracle-verifier/oracle-grounder wrapper around :func:`routing_infer`."""
+    if sample_id is None:
+        raise ValueError('sample_id is required for selective_oracle_router_infer')
+    if not oracle_targets:
+        raise ValueError('oracle_targets must contain at least one annotated target')
+    if not 0.0 <= float(iou_threshold) <= 1.0:
+        raise ValueError('iou_threshold must be in [0, 1]')
+
+    verifier = OracleIoUVerifierBackend(
+        tokenizer=preprocessor.tokenizer,
+        oracle_targets=oracle_targets,
+        iou_threshold=iou_threshold,
+        context_window_tokens=context_window_tokens,
+    )
+    grounder = OracleGrounderBackend()
+    routed = routing_infer(
+        model=model,
+        preprocessor=preprocessor,
+        image=image,
+        verifier_backend=verifier,
+        grounder_backend=grounder,
+        query=query,
+        cot=cot,
+        sample_id=sample_id,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        conversation=conversation,
+        options=options,
+        log_path=log_path,
+    )
+    events = routed['events']
     matched_events = [
         event for event in events
         if event['match_status'] == 'matched_unique_explicit_target'
@@ -866,19 +923,17 @@ def selective_oracle_router_infer(
     ]
     return {
         'selective_router': {
-            'response': controller_result.response,
-            'generated_ids': generated_ids,
-            'boxes': boxes,
-            'bound_boxes': bound_boxes,
-            'finished_with_eos': bool(
-                generated_ids and generated_ids[-1] == preprocessor.tokenizer.eos_token_id
-            ),
+            'response': routed['response'],
+            'generated_ids': routed['generated_ids'],
+            'boxes': routed['boxes'],
+            'bound_boxes': routed['bound_boxes'],
+            'finished_with_eos': routed['finished_with_eos'],
         },
         'intervention': {
             'mode': 'online_selective_oracle_router_grounder',
             'iou_threshold': float(iou_threshold),
             'coordinate_event_count': len(events),
-            'generated_coordinate_count': len(boxes),
+            'generated_coordinate_count': len(routed['boxes']),
             'matched_coordinate_count': len(matched_events),
             'routed_coordinate_count': len(routed_events),
             'verified_accepted_coordinate_count': sum(
