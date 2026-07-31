@@ -102,6 +102,120 @@ the result JSONL while mapping them for scoring as follows:
 Select its image input with `--routing-image-mode`; the default is
 `bbox_image_only`.
 
+An option-likelihood variant avoids free-form generation and JSON parsing:
+`--task-mode routing_option_likelihood`. The model sees one image, the object
+reference, and the candidate box as absolute `xyxy` coordinates in the exact
+Qwen smart-resized image frame. `--option-image-mode raw_image` uses the clean
+scene; `bbox_image` uses the same scene with a red candidate rectangle.
+
+The four routing actions are represented by the single-token completions
+`A/B/C/D`. One multimodal forward pass produces all four next-token negative
+log-likelihoods; the lowest-loss option is the prediction. Confidence is the
+winning probability after normalizing only across those four options, and the
+result metadata also records every option loss, token id, probability, and the
+best-versus-second-best loss margin. The model execution contract lives in
+`option_likelihood.py`, while image/coordinate preparation, prompts, and GQA
+adaptation remain separate.
+
+An alternative geometry-based route is available through
+`--task-mode routing_grounding_geometry`. Instead of asking Qwen to select an
+action directly, it asks Qwen to locate exactly one instance of the object
+reference and return one absolute `xyxy` box on the exact smart-resized image.
+The candidate coordinates are hidden from the localization prompt. A
+model-independent router then compares the candidate and generated reference
+box:
+
+- IoU at least `--grounding-accept-iou` (default `0.5`) -> `no_action`
+- candidate coverage at least `--grounding-containment` (default `0.7`) ->
+  `expand`
+- generated-reference coverage at least the containment threshold ->
+  `tighten`
+- all remaining low-IoU relations -> `relocate`
+
+The `expand` and `tighten` rules apply only below the acceptance IoU and
+require asymmetric containment. This avoids inferring a size correction from
+box area alone. Use `--grounding-image-mode raw_image` to hide the candidate
+entirely, or `bbox_image` to show it as a red visual hint. Parsing, geometry,
+prompt construction, and model execution remain separate modules, so this
+path does not alter the option-likelihood classifier.
+
+The grounding parser tolerates at most one generated pixel beyond each image
+edge by default. It clips only that bounded excursion and records the raw box,
+usable clipped box, affected sides, and tolerance in result metadata. Larger
+excursions, empty boxes, and multiple boxes remain failures. Set
+`--grounding-boundary-tolerance 0` for strict bounds or another non-negative
+value for an explicit ablation.
+
+Two localization prompt protocols are retained for controlled comparison:
+`--grounding-prompt-protocol compact_json_v1` reproduces the original concise
+prompt, while `single_object_json_v2` explicitly forbids top-level lists,
+multiple boxes, labels inside `bbox_2d`, Markdown, and explanations. The
+concise protocol remains the default because the evaluator's default model is
+7B. On the current GQA dev split, strict v2 substantially improves 3B parsing
+and routing, but compact v1 retains better 7B routing quality; select the
+protocol explicitly when reporting an ablation.
+
+For example:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 \
+/home/zhonggai/miniconda3/envs/qwen25/bin/python -u -m \
+  verifier.benchmarks.gqa_controlled.evaluator \
+  --model-path weights/Qwen2.5-VL-7B-Instruct \
+  --task-mode routing_option_likelihood \
+  --option-image-mode raw_image \
+  --split test \
+  --output output/verifier_benchmark/qwen25_vl_7b/options_raw/results.jsonl \
+  --verbose
+```
+
+Run the geometry-based variant with:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 \
+/home/zhonggai/miniconda3/envs/qwen25/bin/python -u -m \
+  verifier.benchmarks.gqa_controlled.evaluator \
+  --model-path weights/Qwen2.5-VL-7B-Instruct \
+  --task-mode routing_grounding_geometry \
+  --grounding-image-mode raw_image \
+  --grounding-accept-iou 0.5 \
+  --grounding-containment 0.7 \
+  --grounding-boundary-tolerance 1 \
+  --grounding-prompt-protocol single_object_json_v2 \
+  --split dev \
+  --output output/verifier_benchmark/qwen25_vl_7b/geometry_raw/results.jsonl \
+  --verbose
+```
+
+The same geometry task can use Grounding DINO as an independent reference
+localizer. In this mode the detector sees only the clean original image and
+object reference. Its highest-score detection is post-processed back to
+absolute `xyxy` coordinates on the original image and compared directly with
+the candidate; neither Qwen smart resize nor VoCoT square padding is involved.
+No detection is recorded as an end-to-end localization failure rather than
+being guessed as `relocate`.
+
+Grounding DINO requires the dedicated `qwen25` environment (Transformers 4.49)
+and a local checkpoint. Select box/text thresholds on `dev`, then freeze them
+before evaluating `test`:
+
+```bash
+CUDA_VISIBLE_DEVICES=7 \
+/home/zhonggai/miniconda3/envs/qwen25/bin/python -u -m \
+  verifier.benchmarks.gqa_controlled.evaluator \
+  --model-path weights/grounding-dino-base \
+  --task-mode routing_grounding_geometry \
+  --geometry-backend grounding_dino \
+  --grounding-image-mode raw_image \
+  --grounding-accept-iou 0.5 \
+  --grounding-containment 0.7 \
+  --dino-box-threshold 0.30 \
+  --dino-text-threshold 0.25 \
+  --split dev \
+  --output output/verifier_benchmark/gqa_controlled/routing_grounding_geometry/grounding_dino_base/dev/results.jsonl \
+  --verbose
+```
+
 Run a small development smoke test in the dedicated Qwen environment:
 
 ```bash

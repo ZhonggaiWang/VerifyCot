@@ -10,6 +10,7 @@ from PIL import Image
 from verifier.backends.qwen25_vl import (
     COORDINATE_SYSTEM,
     CandidateVerificationInput,
+    GroundingActionInput,
 )
 from verifier.benchmarks.gqa_controlled import (
     compute_binary_alignment_metrics,
@@ -74,6 +75,17 @@ class GQAControlledAdapterTests(unittest.TestCase):
             self.assertNotIn('expected_status', candidate.__dict__)
             self.assertNotIn('target_box', candidate.__dict__)
             self.assertNotIn('construction', candidate.__dict__)
+
+            action_input = example.to_grounding_action_input()
+            self.assertIsInstance(action_input, GroundingActionInput)
+            self.assertEqual(action_input.image.size, (7, 4))
+            self.assertEqual(
+                action_input.candidate_bbox_pixel_xyxy,
+                (0.0, 0.0, 7.0, 4.0),
+            )
+            self.assertNotIn('expected_status', action_input.__dict__)
+            self.assertNotIn('target_box', action_input.__dict__)
+            self.assertNotIn('construction', action_input.__dict__)
 
     def test_split_filtering_preserves_manifest_order(self):
         with tempfile.TemporaryDirectory() as directory:

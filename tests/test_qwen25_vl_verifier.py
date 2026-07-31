@@ -3,28 +3,45 @@
 import unittest
 
 from PIL import Image
+import torch
 
 from utils.coordinate_intervention import normalized_box_to_square_padding
 from verifier.backend import VerificationRequest
 from verifier.backends.qwen25_vl import (
     CandidateVerificationInput,
+    DEFAULT_GROUNDING_PROMPT_PROTOCOL,
     DEFAULT_MAX_PIXELS,
     DEFAULT_MIN_PIXELS,
+    GROUNDING_ACTION_OPTIONS,
+    GROUNDING_PROMPT_PROTOCOLS,
+    GROUNDING_SYSTEM_PROMPT,
+    GroundingActionInput,
     LocalQwen25VLRunner,
+    Qwen25VLGroundingActionClassifier,
+    Qwen25VLGroundingGeometryClassifier,
     Qwen25VLVerifierBackend,
     ROUTING_STATUSES,
+    SingleTokenOptionScores,
     STATUSES,
     build_binary_alignment_prompt,
+    build_grounding_action_prompt,
+    build_reference_grounding_prompt,
     build_routing_prompt,
     build_verification_prompt,
     center_pad_image,
+    decide_from_option_scores,
     normalized_square_box_to_pixel_box,
     original_pixel_box_to_normalized_square_box,
     parse_binary_alignment_output,
+    parse_reference_grounding_box,
+    parse_reference_grounding_box_details,
     parse_routing_output,
     parse_verifier_output,
+    prepare_grounding_action_image,
+    qwen_smart_resize_size,
     render_candidate_box,
     resize_crop_for_qwen,
+    route_from_grounding_geometry,
 )
 from verifier.backends.qwen25_vl.prompt import ROUTING_SYSTEM_PROMPT, SYSTEM_PROMPT
 
@@ -37,6 +54,62 @@ class _FixedRunner:
     def generate(self, messages):
         self.messages = messages
         return self.response
+
+
+class _FixedOptionRunner:
+    min_pixels = 4 * 28 * 28
+    max_pixels = 512 * 28 * 28
+
+    def __init__(self, losses):
+        self.losses = losses
+        self.messages = None
+        self.options = None
+
+    def score_single_token_options(self, messages, options):
+        self.messages = messages
+        self.options = options
+        return SingleTokenOptionScores(
+            negative_log_likelihoods=dict(self.losses),
+            token_ids={
+                label: 100 + index
+                for index, label in enumerate(options)
+            },
+        )
+
+
+class _FakeBatch(dict):
+    def __init__(self):
+        input_ids = torch.tensor([[1, 2, 3]])
+        super().__init__(input_ids=input_ids)
+        self.input_ids = input_ids
+
+    def to(self, device):
+        return self
+
+
+class _FakeTokenizer:
+    _ids = {'A': 4, 'B': 5, 'C': 6, 'D': 7}
+
+    def encode(self, text, add_special_tokens=False):
+        return [self._ids[text]]
+
+
+class _FakeProcessor:
+    tokenizer = _FakeTokenizer()
+
+    def apply_chat_template(self, *args, **kwargs):
+        return _FakeBatch()
+
+
+class _FakeModel:
+    def __init__(self):
+        self.call_count = 0
+
+    def __call__(self, **kwargs):
+        self.call_count += 1
+        logits = torch.zeros((1, 3, 8), dtype=torch.float32)
+        logits[0, -1, 4:8] = torch.tensor([0.0, 3.0, 2.0, 1.0])
+        return type('Output', (), {'logits': logits})()
 
 
 class QwenVerifierRenderingTests(unittest.TestCase):
@@ -155,6 +228,328 @@ class QwenVerifierRenderingTests(unittest.TestCase):
             line_width=1,
         )
         self.assertEqual(rendered.pixel_bbox_xyxy, (1, 0, 4, 6))
+
+    def test_grounding_action_uses_exact_qwen_resize_coordinate_frame(self):
+        self.assertEqual(
+            qwen_smart_resize_size(
+                (100, 50),
+                min_pixels=4 * 28 * 28,
+                max_pixels=512 * 28 * 28,
+            ),
+            (112, 56),
+        )
+        prepared = prepare_grounding_action_image(
+            Image.new('RGB', (100, 50), 'white'),
+            (10, 5, 50, 25),
+            min_pixels=4 * 28 * 28,
+            max_pixels=512 * 28 * 28,
+        )
+        self.assertEqual(prepared.original_size, (100, 50))
+        self.assertEqual(prepared.model_size, (112, 56))
+        self.assertEqual(
+            prepared.candidate_bbox_model_xyxy,
+            (11, 5, 56, 28),
+        )
+        self.assertNotIn(
+            (255, 0, 0),
+            set(prepared.clean_image.getdata()),
+        )
+        self.assertIn(
+            (255, 0, 0),
+            set(prepared.marked_image.getdata()),
+        )
+
+
+class QwenOptionLikelihoodTests(unittest.TestCase):
+    def test_lowest_nll_decision_has_normalized_confidence_and_margin(self):
+        decision = decide_from_option_scores(SingleTokenOptionScores(
+            negative_log_likelihoods={
+                'no_action': 2.0,
+                'relocate': 0.5,
+                'expand': 1.5,
+                'tighten': 3.0,
+            },
+            token_ids={
+                'no_action': 1,
+                'relocate': 2,
+                'expand': 3,
+                'tighten': 4,
+            },
+        ))
+        self.assertEqual(decision.label, 'relocate')
+        self.assertAlmostEqual(decision.nll_margin, 1.0)
+        self.assertAlmostEqual(
+            sum(decision.normalized_probabilities.values()),
+            1.0,
+        )
+        self.assertEqual(
+            decision.confidence,
+            decision.normalized_probabilities['relocate'],
+        )
+
+    def test_local_runner_scores_all_options_with_one_forward(self):
+        runner = LocalQwen25VLRunner(model_path='unused')
+        runner._processor = _FakeProcessor()
+        runner._model = _FakeModel()
+        runner._input_device = 'cpu'
+        scores = runner.score_single_token_options(
+            messages=[{'role': 'user', 'content': []}],
+            options=GROUNDING_ACTION_OPTIONS,
+        )
+        self.assertEqual(runner._model.call_count, 1)
+        self.assertEqual(
+            min(
+                scores.negative_log_likelihoods,
+                key=scores.negative_log_likelihoods.__getitem__,
+            ),
+            'relocate',
+        )
+        self.assertEqual(
+            scores.token_ids,
+            {
+                'no_action': 4,
+                'relocate': 5,
+                'expand': 6,
+                'tighten': 7,
+            },
+        )
+
+    def test_action_classifier_uses_raw_or_marked_image_with_same_bbox_text(self):
+        runner = _FixedOptionRunner({
+            'no_action': 2.0,
+            'relocate': 0.5,
+            'expand': 1.5,
+            'tighten': 3.0,
+        })
+        classifier = Qwen25VLGroundingActionClassifier(runner=runner)
+        candidate = GroundingActionInput(
+            image=Image.new('RGB', (100, 50), 'white'),
+            object_reference='baby',
+            candidate_bbox_pixel_xyxy=(10, 5, 50, 25),
+            sample_id='sample-1',
+        )
+        raw_lookup = classifier.classify(candidate, image_mode='raw_image')
+        self.assertEqual(raw_lookup.status, 'relocate')
+        self.assertEqual(raw_lookup.metadata['model_image_size'], [112, 56])
+        self.assertEqual(
+            raw_lookup.metadata['candidate_model_pixel_bbox_xyxy'],
+            [11, 5, 56, 28],
+        )
+        raw_image = runner.messages[1]['content'][0]['image']
+        self.assertNotIn((255, 0, 0), set(raw_image.getdata()))
+        self.assertIn('Image size: 112 x 56', raw_lookup.metadata['prompt'])
+        self.assertIn(
+            'Candidate bbox (absolute xyxy): [11, 5, 56, 28]',
+            raw_lookup.metadata['prompt'],
+        )
+
+        marked_lookup = classifier.classify(
+            candidate,
+            image_mode='bbox_image',
+        )
+        marked_image = runner.messages[1]['content'][0]['image']
+        self.assertIn((255, 0, 0), set(marked_image.getdata()))
+        self.assertEqual(
+            raw_lookup.metadata['candidate_model_pixel_bbox_xyxy'],
+            marked_lookup.metadata['candidate_model_pixel_bbox_xyxy'],
+        )
+        self.assertEqual(runner.options, GROUNDING_ACTION_OPTIONS)
+
+    def test_action_prompt_exposes_only_one_fixed_option_question(self):
+        prompt = build_grounding_action_prompt(
+            object_reference='baby',
+            candidate_bbox_xyxy=(11, 5, 56, 28),
+            image_size=(112, 56),
+            image_mode='raw_image',
+        )
+        self.assertIn('Object reference: "baby"', prompt)
+        self.assertTrue(prompt.endswith('Answer:'))
+
+
+class QwenGroundingGeometryTests(unittest.TestCase):
+    def test_geometry_router_distinguishes_all_four_actions(self):
+        self.assertEqual(
+            route_from_grounding_geometry(
+                (0, 0, 100, 100),
+                (5, 5, 95, 95),
+            ).action,
+            'no_action',
+        )
+        expand = route_from_grounding_geometry(
+            (25, 25, 75, 75),
+            (0, 0, 100, 100),
+        )
+        self.assertEqual(expand.action, 'expand')
+        self.assertEqual(expand.candidate_coverage_by_grounding, 1.0)
+        self.assertEqual(expand.grounding_coverage_by_candidate, 0.25)
+
+        tighten = route_from_grounding_geometry(
+            (0, 0, 100, 100),
+            (25, 25, 75, 75),
+        )
+        self.assertEqual(tighten.action, 'tighten')
+        self.assertEqual(tighten.candidate_coverage_by_grounding, 0.25)
+        self.assertEqual(tighten.grounding_coverage_by_candidate, 1.0)
+
+        self.assertEqual(
+            route_from_grounding_geometry(
+                (0, 0, 40, 40),
+                (60, 60, 100, 100),
+            ).action,
+            'relocate',
+        )
+
+    def test_grounding_parser_accepts_qwen_formats_and_rejects_bad_boxes(self):
+        self.assertEqual(
+            parse_reference_grounding_box(
+                '{"bbox_2d":[11,5,56,28],"label":"baby"}',
+                (112, 56),
+            ),
+            (11.0, 5.0, 56.0, 28.0),
+        )
+        self.assertEqual(
+            parse_reference_grounding_box(
+                '<|box_start|>(11,5),(56,28)<|box_end|>',
+                (112, 56),
+            ),
+            (11.0, 5.0, 56.0, 28.0),
+        )
+        with self.assertRaisesRegex(ValueError, 'exactly one'):
+            parse_reference_grounding_box(
+                '[{"bbox_2d":[1,1,2,2]},{"bbox_2d":[3,3,4,4]}]',
+                (10, 10),
+            )
+        with self.assertRaisesRegex(ValueError, 'outside'):
+            parse_reference_grounding_box(
+                '{"bbox_2d":[1,1,20,20]}',
+                (10, 10),
+            )
+
+    def test_grounding_parser_audits_one_pixel_boundary_clipping(self):
+        parsed = parse_reference_grounding_box_details(
+            '{"bbox_2d":[-1,-1,113,57],"label":"baby"}',
+            (112, 56),
+        )
+        self.assertEqual(parsed.raw_box, (-1.0, -1.0, 113.0, 57.0))
+        self.assertEqual(parsed.box, (0.0, 0.0, 112.0, 56.0))
+        self.assertTrue(parsed.boundary_clipped)
+        self.assertEqual(
+            parsed.clipped_sides,
+            ('left', 'top', 'right', 'bottom'),
+        )
+        self.assertEqual(parsed.boundary_tolerance_pixels, 1.0)
+        with self.assertRaisesRegex(ValueError, 'beyond the 1-pixel tolerance'):
+            parse_reference_grounding_box(
+                '{"bbox_2d":[-1.01,0,56,28],"label":"baby"}',
+                (112, 56),
+            )
+
+    def test_grounding_prompt_does_not_expose_candidate_coordinates(self):
+        prompt = build_reference_grounding_prompt(
+            'baby',
+            (112, 56),
+            'raw_image',
+            prompt_protocol='single_object_json_v2',
+        )
+        self.assertIn('Locate exactly one best-matching instance of "baby"', prompt)
+        self.assertIn('112 x 56', prompt)
+        self.assertIn(
+            'bbox_2d array must contain exactly four numbers',
+            prompt,
+        )
+        self.assertIn(
+            '{"bbox_2d":[x1,y1,x2,y2],"label":"baby"}',
+            prompt,
+        )
+        self.assertNotIn('candidate bbox', prompt.lower())
+        self.assertIn('top level is one object, never a list', GROUNDING_SYSTEM_PROMPT)
+        self.assertEqual(
+            DEFAULT_GROUNDING_PROMPT_PROTOCOL,
+            'compact_json_v1',
+        )
+        self.assertEqual(
+            GROUNDING_PROMPT_PROTOCOLS,
+            ('compact_json_v1', 'single_object_json_v2'),
+        )
+        compact_prompt = build_reference_grounding_prompt(
+            'baby',
+            (112, 56),
+            'raw_image',
+            prompt_protocol='compact_json_v1',
+        )
+        self.assertNotIn('Select one instance only', compact_prompt)
+        self.assertTrue(
+            compact_prompt.endswith(
+                'Return only its bbox in the required JSON schema.'
+            )
+        )
+
+    def test_grounding_classifier_generates_box_then_routes_geometry(self):
+        runner = _FixedRunner(
+            '{"bbox_2d":[11,5,56,28],"label":"baby"}'
+        )
+        classifier = Qwen25VLGroundingGeometryClassifier(runner=runner)
+        lookup = classifier.classify(GroundingActionInput(
+            image=Image.new('RGB', (100, 50), 'white'),
+            object_reference='baby',
+            candidate_bbox_pixel_xyxy=(10, 5, 50, 25),
+            sample_id='sample-1',
+        ))
+        self.assertEqual(lookup.status, 'no_action')
+        self.assertIsNone(lookup.confidence)
+        self.assertFalse(lookup.metadata['parse_failed'])
+        self.assertEqual(
+            lookup.metadata['prompt_protocol'],
+            'compact_json_v1',
+        )
+        self.assertEqual(
+            lookup.metadata['grounding_box_model_pixel_xyxy'],
+            [11.0, 5.0, 56.0, 28.0],
+        )
+        self.assertEqual(lookup.metadata['geometry']['iou'], 1.0)
+
+    def test_grounding_classifier_preserves_failed_raw_response(self):
+        lookup = Qwen25VLGroundingGeometryClassifier(
+            runner=_FixedRunner('I cannot locate it')
+        ).classify(GroundingActionInput(
+            image=Image.new('RGB', (100, 50), 'white'),
+            object_reference='baby',
+            candidate_bbox_pixel_xyxy=(10, 5, 50, 25),
+        ))
+        self.assertIsNone(lookup.status)
+        self.assertTrue(lookup.metadata['parse_failed'])
+        self.assertEqual(lookup.metadata['raw_response'], 'I cannot locate it')
+        self.assertIn('ValueError', lookup.error)
+
+    def test_grounding_classifier_logs_raw_and_clipped_boundary_box(self):
+        lookup = Qwen25VLGroundingGeometryClassifier(
+            runner=_FixedRunner(
+                '{"bbox_2d":[-1,0,113,56],"label":"baby"}'
+            )
+        ).classify(GroundingActionInput(
+            image=Image.new('RGB', (100, 50), 'white'),
+            object_reference='baby',
+            candidate_bbox_pixel_xyxy=(0, 0, 100, 50),
+        ))
+        self.assertEqual(lookup.status, 'no_action')
+        self.assertFalse(lookup.metadata['parse_failed'])
+        self.assertEqual(
+            lookup.metadata['grounding_box_raw_model_pixel_xyxy'],
+            [-1.0, 0.0, 113.0, 56.0],
+        )
+        self.assertEqual(
+            lookup.metadata['grounding_box_model_pixel_xyxy'],
+            [0.0, 0.0, 112.0, 56.0],
+        )
+        self.assertTrue(lookup.metadata['grounding_boundary_clipped'])
+        self.assertEqual(
+            lookup.metadata['grounding_boundary_clipped_sides'],
+            ['left', 'right'],
+        )
+        self.assertEqual(
+            lookup.metadata['grounding_boundary_tolerance_pixels'],
+            1.0,
+        )
 
 
 class QwenVerifierParsingTests(unittest.TestCase):

@@ -10,6 +10,7 @@ from PIL import Image
 
 from ...backends.qwen25_vl import (
     CandidateVerificationInput,
+    GroundingActionInput,
     STATUSES,
     original_pixel_box_to_normalized_square_box,
 )
@@ -121,6 +122,20 @@ class GQAControlledExample:
             image=image,
             object_reference=self.object_reference,
             candidate_bbox=padded_bbox,
+            sample_id=self.event_id,
+        )
+
+    def to_grounding_action_input(self) -> GroundingActionInput:
+        """Load a clean image and preserve its original absolute bbox frame."""
+
+        if not self.source_image.is_file():
+            raise FileNotFoundError(f'source image not found: {self.source_image}')
+        with Image.open(self.source_image) as source:
+            image = source.convert('RGB')
+        return GroundingActionInput(
+            image=image,
+            object_reference=self.object_reference,
+            candidate_bbox_pixel_xyxy=self.candidate_box_pixel_xyxy,
             sample_id=self.event_id,
         )
 

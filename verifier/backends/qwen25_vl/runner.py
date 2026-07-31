@@ -6,6 +6,8 @@ import verifier modules without requiring a newer Transformers installation.
 
 from typing import Any, Mapping, Optional, Protocol, Sequence
 
+from .option_likelihood import SingleTokenOptionScores
+
 
 DEFAULT_MIN_PIXELS = 4 * 28 * 28
 DEFAULT_MAX_PIXELS = 512 * 28 * 28
@@ -137,3 +139,75 @@ class LocalQwen25VLRunner:
             skip_special_tokens=True,
             clean_up_tokenization_spaces=False,
         )[0]
+
+    def score_single_token_options(
+            self,
+            messages: Sequence[Mapping[str, Any]],
+            options: Mapping[str, str],
+    ) -> SingleTokenOptionScores:
+        """Score named one-token completions with one multimodal forward pass.
+
+        The Qwen chat template ends its assistant-generation prefix with a
+        newline, so each option is tokenized as a standalone completion.  A
+        strict one-token requirement makes all option losses directly
+        comparable and avoids length normalization or free-form parsing.
+        """
+
+        if not isinstance(options, Mapping) or not options:
+            raise ValueError('options must be a non-empty mapping')
+        self._load()
+        token_ids = {}
+        seen_token_ids = set()
+        for label, completion in options.items():
+            normalized_label = str(label)
+            if not normalized_label:
+                raise ValueError('option labels must not be empty')
+            if not isinstance(completion, str) or not completion:
+                raise ValueError('option completions must be non-empty strings')
+            ids = self._processor.tokenizer.encode(
+                completion,
+                add_special_tokens=False,
+            )
+            if len(ids) != 1:
+                raise ValueError(
+                    f'option {normalized_label!r} must tokenize to exactly '
+                    f'one token, got {ids}'
+                )
+            token_id = int(ids[0])
+            if token_id in seen_token_ids:
+                raise ValueError(
+                    f'option {normalized_label!r} reuses token id {token_id}'
+                )
+            seen_token_ids.add(token_id)
+            token_ids[normalized_label] = token_id
+
+        inputs = self._processor.apply_chat_template(
+            list(messages),
+            tokenize=True,
+            add_generation_prompt=True,
+            return_dict=True,
+            return_tensors='pt',
+        )
+        inputs = inputs.to(self._input_device)
+        try:
+            import torch
+        except ImportError as error:
+            raise RuntimeError('PyTorch is required for option scoring') from error
+        with torch.inference_mode():
+            outputs = self._model(
+                **inputs,
+                use_cache=False,
+                return_dict=True,
+            )
+            next_token_log_probabilities = torch.log_softmax(
+                outputs.logits[0, -1, :].float(),
+                dim=-1,
+            )
+        losses = {
+            label: float(-next_token_log_probabilities[token_id].item())
+            for label, token_id in token_ids.items()
+        }
+        return SingleTokenOptionScores(
+            negative_log_likelihoods=losses,
+            token_ids=token_ids,
+        )
