@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Literal, Optional, Tuple
 
 
-Verdict = Literal['aligned', 'misaligned', 'uncertain']
+Verdict = Literal['aligned', 'misaligned', 'unknown', 'uncertain']
 Reason = Literal[
     'none',
     'wrong_object',
@@ -26,8 +26,13 @@ class VerificationResult:
             ('aligned', 'none'),
             ('misaligned', 'wrong_object'),
             ('misaligned', 'partial_coverage'),
-            ('uncertain', 'ambiguous'),
+            ('misaligned', 'ambiguous'),
             ('misaligned', 'unsupported'),
+            ('unknown', 'none'),
+            # Legacy compatibility: archived oracle and parse-failure records
+            # used ``uncertain/ambiguous`` before region ambiguity was
+            # separated from verifier uncertainty.
+            ('uncertain', 'ambiguous'),
         }
         if (self.verdict, self.reason) not in valid_pairs:
             raise ValueError(
@@ -41,7 +46,15 @@ class VerificationResult:
 
     @classmethod
     def uncertain(cls) -> 'VerificationResult':
+        """Return the legacy fail-open value used by archived experiments."""
+
         return cls(verdict='uncertain', reason='ambiguous', confidence=0.0)
+
+    @classmethod
+    def unknown(cls, confidence: float = 0.0) -> 'VerificationResult':
+        """Return a fail-open decision when the verifier cannot judge."""
+
+        return cls(verdict='unknown', reason='none', confidence=confidence)
 
     @classmethod
     def unsupported(cls, confidence: float) -> 'VerificationResult':

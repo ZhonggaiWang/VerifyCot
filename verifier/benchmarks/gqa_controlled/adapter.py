@@ -8,24 +8,25 @@ from typing import Any, List, Mapping, Tuple
 
 from PIL import Image
 
-from ...backends.qwen25_vl import (
+from ...verifier_backends.qwen25_vl import (
     CandidateVerificationInput,
     GroundingActionInput,
-    STATUSES,
-    original_pixel_box_to_normalized_square_box,
 )
+from ...coordinates import original_pixel_box_to_normalized_square_box
+from ...verifier_backends import GeometryVerificationInput
+from .labels import CONTROLLED_STATUSES
 
 
 PixelBox = Tuple[float, float, float, float]
 
 
 def expected_status_from_record(record: Mapping[str, Any]) -> str:
-    """Map benchmark ``verdict/reason`` fields to the five-way Qwen status."""
+    """Map ``verdict/reason`` to the benchmark construction subtype."""
 
     verdict = str(record.get('verdict', '')).strip()
     reason = str(record.get('reason', '')).strip()
     status = 'aligned' if verdict == 'aligned' else reason
-    if status not in STATUSES:
+    if status not in CONTROLLED_STATUSES:
         raise ValueError(
             f'invalid benchmark label verdict={verdict!r}, reason={reason!r}'
         )
@@ -133,6 +134,22 @@ class GQAControlledExample:
         with Image.open(self.source_image) as source:
             image = source.convert('RGB')
         return GroundingActionInput(
+            image=image,
+            object_reference=self.object_reference,
+            candidate_bbox_pixel_xyxy=self.candidate_box_pixel_xyxy,
+            sample_id=self.event_id,
+        )
+
+    def to_geometry_verification_input(self) -> GeometryVerificationInput:
+        """Create the model-independent input used by geometry verifiers."""
+
+        if not self.source_image.is_file():
+            raise FileNotFoundError(
+                f'source image not found: {self.source_image}'
+            )
+        with Image.open(self.source_image) as source:
+            image = source.convert('RGB')
+        return GeometryVerificationInput(
             image=image,
             object_reference=self.object_reference,
             candidate_bbox_pixel_xyxy=self.candidate_box_pixel_xyxy,

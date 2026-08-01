@@ -1,11 +1,17 @@
 # Object--coordinate verifier and router
 
-The active implementation is split into three layers:
+The active implementation is split by responsibility:
 
 - `routing_controller.py`: model-agnostic coordinate boundary, verification,
-  expert-grounder routing, and clean commit.
-- `backend.py` and `backends/`: verifier/grounder interfaces and concrete
-  backends. `backends/oracle/` is restricted to upper-bound experiments.
+  expert routing, and clean commit.
+- `contracts/`: stable verifier, Grounder, and BoxRefiner interfaces.
+- `models/`: reusable Qwen and Grounding DINO inference capabilities, without
+  controller-role policy.
+- `verifier_backends/`: active verifier implementations, including the IoU
+  oracle used for upper bounds.
+- `experts/grounders/` and `experts/refiners/`: routed correction experts;
+  their oracle implementations return a conservatively matched GT box.
+- `oracle_targets.py`: shared reference-to-GT matcher for oracle components.
 - `legacy/repair_controller.py`: archived prompt-repair, one-shot corruption,
   and sandbox REFbind ablations retained for exact reproduction.
 - `legacy/oracle_backends/`: stored and single-candidate oracle lookups used
@@ -14,29 +20,34 @@ The active implementation is split into three layers:
 
 The active controller always stops before a candidate coordinate enters
 REFbind. It then commits either the accepted candidate or the grounding
-backend's replacement; the committed coordinate always follows Volcano's
-normal REFbind path. There is no active sandbox REFbind mode.
+backend/box refiner's replacement; the committed coordinate always follows
+Volcano's normal REFbind path. There is no active sandbox REFbind mode.
 
 ## Qwen2.5-VL verifier backend
 
-`backends/qwen25_vl/` implements a zero-shot five-way verifier. It consumes
-the source PIL image, the local object reference, and the uncommitted VoCoT
-candidate box. It deliberately does not consume the original task question:
-verification is a local object--region alignment decision.
-The model is explicitly prompted to return JSON with:
+`verifier_backends/qwen25_vl/` keeps two zero-shot judgment protocols:
+
+- `binary_alignment` returns whether the candidate region supports the object
+  reference.
+- `routing_four_way` directly predicts `no_action`, `relocate`, `expand`, or
+  `tighten`.
+
+Both consume the source PIL image, the local object reference, and the
+uncommitted VoCoT candidate box. They deliberately do not consume the original
+task question: verification is a local object--region alignment decision. The
+binary protocol returns:
 
 ```json
-{"status":"aligned","confidence":0.9}
+{"aligned":true,"confidence":0.9}
 ```
 
-The value must be exactly one of `aligned`, `wrong_object`,
-`partial_coverage`, `ambiguous`, or `unsupported`. Confidence is the model's
-self-reported value from 0.0 to 1.0.
+The direct four-way protocol returns:
 
-`unsupported` means that the candidate region falls on background or contains
-no visual evidence for the referenced object. It is represented internally as
-`misaligned / unsupported`, alongside `misaligned / wrong_object`; it does not
-mean that the referenced object is absent from the entire image.
+```json
+{"status":"relocate","confidence":0.9}
+```
+
+Confidence is the model's self-reported value from 0.0 to 1.0.
 
 The candidate box is already normalized on VoCoT's center-padded square.
 The renderer reproduces `VoCoT_InputProcessor.expand2square_fn` and draws the
@@ -44,20 +55,20 @@ box directly on that square; it never applies the original-image-to-padding
 conversion a second time.
 
 Qwen imports and model loading are lazy. The original Volcano environment can
-therefore import this backend, while `LocalQwen25VLRunner` must execute in a
-separate environment with Qwen2.5-VL support. A future process/RPC runner can
-implement the same `Qwen25VLRunner.generate(messages)` interface without
-changing the backend.
+therefore import this backend. Local benchmark evaluation uses
+`LocalQwen25VLRunner` in the Qwen-compatible environment; split-environment
+VoCoT inference uses `RemoteActionVerifierBackend` together with the persistent
+JSONL worker, so the Volcano process does not import or load Qwen itself.
 
 ## Controlled GQA verifier benchmark
 
 `benchmarks/gqa_controlled/` adapts the generated GQA JSONL records to the
-same two-image Qwen input used by the online backend: one full scene with the
-candidate marked in red, followed by a border-free crop from inside that box.
-The unmarked full image is not sent separately. The adapter reads only the
-source image, object reference, and candidate pixel box before inference.
-Target boxes, construction metadata, verdicts, and reasons are retained only
-for post-inference scoring.
+same Qwen inputs used by the online backend. Depending on the selected
+protocol, it sends the candidate crop, the complete scene with the candidate
+marked in red, or both. The adapter reads only the source image, object
+reference, and candidate pixel box before inference. Target boxes,
+construction metadata, verdicts, and reasons are retained only for
+post-inference scoring.
 
 The adapter converts the original-image pixel box exactly once into VoCoT's
 normalized center-padded-square coordinate system. Existing benchmark renders
@@ -85,14 +96,9 @@ red candidate box, and `--binary-image-mode marked_plus_crop` sends that marked
 scene followed by the identical crop. Each mode uses an explicit
 mode-appropriate prompt while retaining the same labels and decoding settings.
 
-The five-way benchmark exposes the same three protocols through
-`--five-way-image-mode`. Its prompt and message builder explicitly describe
-only the images selected by that mode; the default remains
-`marked_plus_crop` for backward compatibility.
-
-An action-oriented ablation is available through
-`--task-mode routing_four_way`. It preserves the original five-way labels in
-the result JSONL while mapping them for scoring as follows:
+The direct action task is selected with `--task-mode routing_four_way`. The
+controlled benchmark retains its source construction labels in the result
+JSONL, but maps them to routing actions for scoring as follows:
 
 - `aligned -> no_action`
 - `wrong_object / unsupported -> relocate`
@@ -101,21 +107,6 @@ the result JSONL while mapping them for scoring as follows:
 
 Select its image input with `--routing-image-mode`; the default is
 `bbox_image_only`.
-
-An option-likelihood variant avoids free-form generation and JSON parsing:
-`--task-mode routing_option_likelihood`. The model sees one image, the object
-reference, and the candidate box as absolute `xyxy` coordinates in the exact
-Qwen smart-resized image frame. `--option-image-mode raw_image` uses the clean
-scene; `bbox_image` uses the same scene with a red candidate rectangle.
-
-The four routing actions are represented by the single-token completions
-`A/B/C/D`. One multimodal forward pass produces all four next-token negative
-log-likelihoods; the lowest-loss option is the prediction. Confidence is the
-winning probability after normalizing only across those four options, and the
-result metadata also records every option loss, token id, probability, and the
-best-versus-second-best loss margin. The model execution contract lives in
-`option_likelihood.py`, while image/coordinate preparation, prompts, and GQA
-adaptation remain separate.
 
 An alternative geometry-based route is available through
 `--task-mode routing_grounding_geometry`. Instead of asking Qwen to select an
@@ -136,8 +127,7 @@ The `expand` and `tighten` rules apply only below the acceptance IoU and
 require asymmetric containment. This avoids inferring a size correction from
 box area alone. Use `--grounding-image-mode raw_image` to hide the candidate
 entirely, or `bbox_image` to show it as a red visual hint. Parsing, geometry,
-prompt construction, and model execution remain separate modules, so this
-path does not alter the option-likelihood classifier.
+prompt construction, and model execution remain separate modules.
 
 The grounding parser tolerates at most one generated pixel beyond each image
 edge by default. It clips only that bounded excursion and records the raw box,
@@ -155,17 +145,17 @@ concise protocol remains the default because the evaluator's default model is
 and routing, but compact v1 retains better 7B routing quality; select the
 protocol explicitly when reporting an ablation.
 
-For example:
+Run the direct four-way verifier with:
 
 ```bash
 CUDA_VISIBLE_DEVICES=7 \
 /home/zhonggai/miniconda3/envs/qwen25/bin/python -u -m \
   verifier.benchmarks.gqa_controlled.evaluator \
   --model-path weights/Qwen2.5-VL-7B-Instruct \
-  --task-mode routing_option_likelihood \
-  --option-image-mode raw_image \
+  --task-mode routing_four_way \
+  --routing-image-mode bbox_image_only \
   --split test \
-  --output output/verifier_benchmark/qwen25_vl_7b/options_raw/results.jsonl \
+  --output output/verifier_benchmark/qwen25_vl_7b/routing_four_way/results.jsonl \
   --verbose
 ```
 
@@ -188,7 +178,7 @@ CUDA_VISIBLE_DEVICES=7 \
 ```
 
 The same geometry task can use Grounding DINO as an independent reference
-localizer. In this mode the detector sees only the clean original image and
+grounder. In this mode the detector sees only the clean original image and
 object reference. Its highest-score detection is post-processed back to
 absolute `xyxy` coordinates on the original image and compared directly with
 the candidate; neither Qwen smart resize nor VoCoT square padding is involved.
@@ -196,8 +186,27 @@ No detection is recorded as an end-to-end localization failure rather than
 being guessed as `relocate`.
 
 Grounding DINO requires the dedicated `qwen25` environment (Transformers 4.49)
-and a local checkpoint. Select box/text thresholds on `dev`, then freeze them
-before evaluating `test`:
+and a local checkpoint. In the current top-1 geometry protocol,
+`box_threshold` controls whether the highest-score localization is retained,
+while `text_threshold` changes only its decoded phrase label and does not
+affect routing. Select the box threshold on `dev`, keep the text threshold
+fixed, then freeze both before evaluating `test`.
+
+The threshold tuner runs DINO only once at the lowest requested threshold and
+replays every larger threshold offline. By default it selects the best dev
+Macro-F1:
+
+```bash
+GPU_ID=7 scripts/tune_grounding_dino_dev_thresholds.sh
+```
+
+Set `BOX_THRESHOLDS`, `TEXT_THRESHOLD`, `SELECTION_METRIC`, or `OUTPUT_DIR` as
+environment variables to change the search. Existing compatible inference is
+reused; set `FORCE_INFERENCE=1` to regenerate it. The output directory contains
+`best_config.json`, a complete JSON report, a CSV table, and the low-threshold
+inference cache.
+
+One direct evaluator invocation is:
 
 ```bash
 CUDA_VISIBLE_DEVICES=7 \
@@ -230,9 +239,9 @@ CUDA_VISIBLE_DEVICES=7 \
 
 After freezing the prompt, run the held-out test split by removing `--limit`
 and changing `--split test`. The evaluator writes one resumable JSONL plus a
-`.summary.json` containing five-way accuracy, macro-F1, per-class metrics,
-confusion matrix, aligned-vs-invalid metrics, parse success, and self-reported
-confidence summaries.
+`.summary.json` containing binary or four-way accuracy, macro-F1 where
+applicable, per-class metrics, confusion matrix, parse success, and
+self-reported confidence summaries.
 
 ## Legacy oracle repair input
 

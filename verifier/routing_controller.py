@@ -1,9 +1,10 @@
-"""Online verifier--grounder routing for VoCoT coordinate generation.
+"""Online verifier--expert routing for VoCoT coordinate generation.
 
 The controller has one commit rule: a generated coordinate is stopped at its
 closing ``</coor>`` before its REFbind feature enters the next model forward.
-The verifier then either accepts that candidate or routes it to a grounding
-backend.  Only the selected coordinate is cleanly replayed and therefore
+The verifier then either accepts that candidate or routes it to the
+specialized Grounder/BoxRefiner selected by policy. Only the selected
+coordinate is cleanly replayed and therefore
 bound into the persistent VoCoT trajectory.
 
 This module intentionally contains no prompt-based self-repair, retry loop, or
@@ -15,7 +16,17 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import torch
 from transformers import (
@@ -28,12 +39,23 @@ from transformers import (
 from constants import DEFAULT_BOC_TOKEN, DEFAULT_EOC_TOKEN
 from utils.coordinate_intervention import box_iou, find_coordinate_spans
 
-from .backend import (
+from .contracts import (
+    ACTION_OUTPUT_SCHEMA,
+    ActionVerifierBackend,
+    ActionVerifierOutput,
+    BoxRefinerBackend,
     GrounderBackend,
     VerificationRequest,
     VerifierBackend,
     validate_normalized_box,
 )
+from .adapters import legacy_lookup_to_action_output
+from .expert_router import (
+    ExpertNotConfiguredError,
+    ExpertUnavailableError,
+    ExpertRouter,
+)
+from .routing_policy import RoutingDecision, RoutingPolicy
 from .types import Box, VerificationLookup
 
 
@@ -131,35 +153,49 @@ class RoutingInferenceResult:
 
 
 class RoutingController:
-    """Verify every generated coordinate and route rejected ones to a grounder."""
+    """Verify every coordinate and route rejection types to specialists."""
 
     def __init__(
             self,
             model,
             tokenizer,
             batch_factory: Callable[[], Dict[str, Any]],
-            verifier: VerifierBackend,
-            grounder: GrounderBackend,
+            verifier: Union[VerifierBackend, ActionVerifierBackend],
+            grounder: Optional[GrounderBackend],
             sample_id: str,
             verifier_confidence_threshold: float = 0.8,
             log_path: Optional[str] = None,
-            sample_context: Optional[Mapping[str, Any]] = None):
+            sample_context: Optional[Mapping[str, Any]] = None,
+            box_refiner: Optional[BoxRefinerBackend] = None,
+            routing_policy: Optional[RoutingPolicy] = None,
+            expert_router: Optional[ExpertRouter] = None,
+            missing_expert_policy: str = 'fail_open'):
         if not sample_id:
             raise ValueError('sample_id is required')
         if verifier is None:
             raise ValueError('verifier backend is required')
-        if grounder is None:
-            raise ValueError('grounder backend is required')
         if not 0.0 <= float(verifier_confidence_threshold) <= 1.0:
             raise ValueError('verifier_confidence_threshold must be in [0, 1]')
+        if missing_expert_policy not in {'fail_open', 'error'}:
+            raise ValueError('missing_expert_policy must be fail_open or error')
 
         self.model = model
         self.tokenizer = tokenizer
         self.batch_factory = batch_factory
         self.verifier = verifier
         self.grounder = grounder
+        self.box_refiner = box_refiner
         self.sample_id = str(sample_id)
         self.verifier_confidence_threshold = float(verifier_confidence_threshold)
+        self.routing_policy = routing_policy or RoutingPolicy(
+            confidence_threshold=self.verifier_confidence_threshold,
+            unsupported_action='no_action',
+        )
+        self.expert_router = expert_router or ExpertRouter(
+            grounder=grounder,
+            box_refiner=box_refiner,
+        )
+        self.missing_expert_policy = missing_expert_policy
         self.log_path = Path(log_path) if log_path else None
         self.sample_context = dict(sample_context or {})
         self.boc_token_id = tokenizer.convert_tokens_to_ids(DEFAULT_BOC_TOKEN)
@@ -268,13 +304,13 @@ class RoutingController:
             replayed_bound_box_count=bound_box_count,
         )
 
-    def _force_grounder_box(
+    def _force_expert_box(
             self,
             h_t_ids: Sequence[int],
             box: Sequence[float],
             max_new_tokens: int,
             temperature: float) -> _GenerationBoundary:
-        """Force a grounder result as coordinate text without pre-committing it."""
+        """Force an expert result as coordinate text without pre-committing it."""
 
         normalized_box = self._validate_box(box)
         payload = ','.join(f'{value:.3f}' for value in normalized_box)
@@ -283,7 +319,7 @@ class RoutingController:
             add_special_tokens=False,
         ).input_ids
         if suffix_ids[-1] != self.eoc_token_id:
-            raise RuntimeError('could not tokenize grounder coordinate closing tag')
+            raise RuntimeError('could not tokenize expert coordinate closing tag')
 
         batch = self.batch_factory()
         prompt_length = int(batch['input_ids'].shape[-1])
@@ -304,7 +340,7 @@ class RoutingController:
         )
         generated = sequences[0, prompt_length:].detach().cpu().tolist()
         if not stopper.triggered or generated != forced_prefix:
-            raise RuntimeError('failed to force the grounding backend coordinate')
+            raise RuntimeError('failed to force the expert coordinate')
 
         spans = find_coordinate_spans(
             generated,
@@ -313,7 +349,7 @@ class RoutingController:
         )
         candidates = [span for span in spans if span[0] >= len(h_t_ids)]
         if not candidates:
-            raise RuntimeError('forced grounder result has no coordinate span')
+            raise RuntimeError('forced expert result has no coordinate span')
         candidate_span = candidates[-1]
         candidate_box = self._box_from_span(generated, candidate_span)
         rounded_requested_box = tuple(
@@ -323,7 +359,7 @@ class RoutingController:
                 abs(actual - expected) > 1e-6
                 for actual, expected in zip(candidate_box, rounded_requested_box)):
             raise RuntimeError(
-                'forced coordinate text differs from the grounding backend box'
+                'forced coordinate text differs from the expert box'
             )
 
         expected_bound_count = len(find_coordinate_spans(
@@ -333,7 +369,7 @@ class RoutingController:
         ))
         bound_box_count = len(getattr(self.model, 'last_bound_boxes', None) or [])
         if bound_box_count != expected_bound_count:
-            raise RuntimeError('grounder coordinate entered REFbind before commit')
+            raise RuntimeError('expert coordinate entered REFbind before commit')
         return _GenerationBoundary(
             generated_ids=generated,
             candidate_span=candidate_span,
@@ -341,13 +377,62 @@ class RoutingController:
             replayed_bound_box_count=bound_box_count,
         )
 
-    def _should_route(self, lookup: VerificationLookup) -> bool:
-        """Route only confident explicit rejections; uncertain checks fail open."""
+    def _should_route(
+            self,
+            output: Union[
+                ActionVerifierOutput,
+                VerificationLookup,
+            ]) -> bool:
+        """Compatibility predicate backed by the semantic routing policy."""
 
-        result = lookup.result
-        return bool(
-            result.verdict == 'misaligned'
-            and result.confidence >= self.verifier_confidence_threshold
+        return self._routing_decision(output).requires_expert
+
+    def _routing_decision(
+            self,
+            output: Union[
+                ActionVerifierOutput,
+                VerificationLookup,
+            ]) -> RoutingDecision:
+        policy = getattr(self, 'routing_policy', None)
+        if policy is None:
+            # Supports old tests and code constructing the controller via
+            # ``__new__`` and setting only the historical threshold field.
+            policy = RoutingPolicy(
+                confidence_threshold=self.verifier_confidence_threshold,
+                unsupported_action='no_action',
+            )
+        return policy.decide(output)
+
+    def _verify_action(
+            self,
+            request: VerificationRequest) -> ActionVerifierOutput:
+        """Normalize new and historical backends at one explicit boundary."""
+
+        verify_action = getattr(self.verifier, 'verify_action', None)
+        if callable(verify_action):
+            output = verify_action(request)
+            if not isinstance(output, ActionVerifierOutput):
+                raise TypeError(
+                    'verify_action() must return ActionVerifierOutput'
+                )
+            return output
+
+        verify = getattr(self.verifier, 'verify', None)
+        if not callable(verify):
+            raise TypeError(
+                'verifier must implement verify_action() or legacy verify()'
+            )
+        lookup = verify(request)
+        if not isinstance(lookup, VerificationLookup):
+            raise TypeError('legacy verify() must return VerificationLookup')
+        unsupported_action = getattr(
+            self.routing_policy,
+            'unsupported_action',
+            'no_action',
+        )
+        return legacy_lookup_to_action_output(
+            lookup,
+            unsupported_action=unsupported_action,
         )
 
     @staticmethod
@@ -412,43 +497,114 @@ class RoutingController:
                 candidate_span=candidate_span,
                 sample_context=self.sample_context,
             )
-            lookup = self.verifier.verify(request)
-            metadata = dict(lookup.metadata)
+            verifier_output = self._verify_action(request) #verifier接受Requset，输出 correct / misalign...
+            metadata = dict(verifier_output.metadata)
+            routing_decision = self._routing_decision(verifier_output)
+            #决定到底路由结果是什么
+
 
             committed_box = request.candidate_bbox
             committed_tokens = candidate_tokens
             grounder_invoked = False
+            box_refiner_invoked = False
             grounder_result = None
-            router_action = metadata.get(
-                'accept_router_action',
-                'verified_accept'
-                if lookup.result.verdict == 'aligned'
-                else 'unverifiable_accept',
-            )
+            expert_result = None
+            missing_expert_error = None
+            router_action = routing_decision.router_action
+            if routing_decision.action == 'no_action':
+                router_action = metadata.get(
+                    'accept_router_action',
+                    routing_decision.router_action,
+                )
 
-            if self._should_route(lookup):
-                grounder_result = self.grounder.ground(request, lookup)
-                forced = self._force_grounder_box(
+            if routing_decision.action == 'abstain':
+                event = {
+                    'sample_id': self.sample_id,
+                    'grounding_step': grounding_step,
+                    'h_t_ends_before_coor': True,
+                    'object_reference': request.object_reference,
+                    'candidate_coordinate_text': candidate_coordinate_text,
+                    'candidate_box': self._box_list(request.candidate_bbox),
+                    'candidate_refbind_uncommitted': True,
+                    'predicted_action': verifier_output.predicted_action,
+                    'verifier_output_schema': ACTION_OUTPUT_SCHEMA,
+                    'action_probabilities': (
+                        None
+                        if verifier_output.action_probabilities is None
+                        else dict(verifier_output.action_probabilities)
+                    ),
+                    'verifier_abstained': verifier_output.abstained,
+                    'policy_abstained': (
+                        routing_decision.verifier_abstained
+                    ),
+                    'verdict': routing_decision.verifier_verdict,
+                    'reason': routing_decision.verifier_reason,
+                    'confidence': float(verifier_output.confidence),
+                    'verifier_error': verifier_output.error,
+                    'verifier_metadata': metadata,
+                    'routing_decision': routing_decision.action,
+                    'router_action': routing_decision.router_action,
+                    'expert_role': None,
+                    'grounder_invoked': False,
+                    'box_refiner_invoked': False,
+                    'candidate_committed': False,
+                }
+                events.append(event)
+                self._write_event(event)
+                return RoutingInferenceResult(
+                    response=self.tokenizer.decode(
+                        h_t_ids,
+                        skip_special_tokens=False,
+                    ),
+                    generated_ids=h_t_ids,
+                    status='routing_abstained',
+                    events=events,
+                )
+
+            if routing_decision.requires_expert:
+                try:
+                    expert_result = self.expert_router.route(
+                        routing_decision,
+                        request,
+                        verifier_output,
+                    )
+                except (
+                    ExpertNotConfiguredError,
+                    ExpertUnavailableError,
+                ) as error:
+                    if self.missing_expert_policy == 'error':
+                        raise
+                    missing_expert_error = str(error)
+                    router_action = (
+                        f'{routing_decision.router_action}_unavailable_accept'
+                    )
+
+            if expert_result is not None:
+                forced = self._force_expert_box(
                     h_t_ids=h_t_ids,
-                    box=grounder_result.bbox,
+                    box=expert_result.bbox,
                     max_new_tokens=max_new_tokens,
                     temperature=temperature,
                 )
                 if forced.candidate_span is None or forced.candidate_box is None:
-                    raise RuntimeError('grounder result did not produce a coordinate')
+                    raise RuntimeError('expert result did not produce a coordinate')
                 committed_box = forced.candidate_box
                 committed_tokens = forced.generated_ids[
                     forced.candidate_span[0]:forced.candidate_span[1] + 1
                 ]
-                grounder_invoked = True
-                router_action = grounder_result.metadata.get(
+                grounder_invoked = expert_result.expert_role == 'grounder'
+                box_refiner_invoked = (
+                    expert_result.expert_role == 'box_refiner'
+                )
+                grounder_result = expert_result if grounder_invoked else None
+                router_action = expert_result.metadata.get(
                     'router_action',
-                    'routed_to_grounder',
+                    routing_decision.router_action,
                 )
 
             committed_iou_to_gt = metadata.get('candidate_iou_to_gt')
-            if grounder_result is not None:
-                evaluation_reference_box = grounder_result.metadata.get(
+            if expert_result is not None:
+                evaluation_reference_box = expert_result.metadata.get(
                     'evaluation_reference_box'
                 )
                 if evaluation_reference_box is not None:
@@ -457,6 +613,14 @@ class RoutingController:
                         self._validate_box(evaluation_reference_box),
                     )
 
+            expert_metadata = (
+                {}
+                if expert_result is None
+                else dict(expert_result.metadata)
+            )
+            resolved_match = expert_metadata.get(
+                'oracle_resolution_matched'
+            )
             event = {
                 'sample_id': self.sample_id,
                 'grounding_step': grounding_step,
@@ -465,22 +629,78 @@ class RoutingController:
                 'candidate_coordinate_text': candidate_coordinate_text,
                 'candidate_box': self._box_list(request.candidate_bbox),
                 'candidate_refbind_uncommitted': True,
-                'verdict': lookup.result.verdict,
-                'reason': lookup.result.reason,
-                'confidence': float(lookup.result.confidence),
-                'verifier_error': lookup.error,
+                'predicted_action': verifier_output.predicted_action,
+                'verifier_output_schema': ACTION_OUTPUT_SCHEMA,
+                'action_probabilities': (
+                    None
+                    if verifier_output.action_probabilities is None
+                    else dict(verifier_output.action_probabilities)
+                ),
+                'verifier_abstained': verifier_output.abstained,
+                'policy_abstained': routing_decision.verifier_abstained,
+                'verdict': routing_decision.verifier_verdict,
+                'reason': routing_decision.verifier_reason,
+                'confidence': float(verifier_output.confidence),
+                'verifier_error': verifier_output.error,
                 'verifier_metadata': metadata,
                 # Compatibility fields retained for existing oracle summaries.
-                'match_status': metadata.get('match_status'),
-                'match_reason': metadata.get('match_reason'),
-                'match_context': metadata.get('match_context'),
-                'target_object': metadata.get('target_object'),
-                'matched_alias': metadata.get('matched_alias'),
-                'oracle_target_box': metadata.get('oracle_target_box'),
-                'candidate_iou_to_gt': metadata.get('candidate_iou_to_gt'),
+                'match_status': (
+                    metadata.get('match_status')
+                    or (
+                        'matched_unique_explicit_target'
+                        if resolved_match else None
+                    )
+                ),
+                'match_reason': (
+                    metadata.get('match_reason')
+                    or expert_metadata.get('oracle_resolution_reason')
+                ),
+                'match_context': (
+                    metadata.get('match_context')
+                    or expert_metadata.get('oracle_resolution_context')
+                ),
+                'target_object': (
+                    metadata.get('target_object')
+                    or expert_metadata.get('target_object')
+                ),
+                'matched_alias': (
+                    metadata.get('matched_alias')
+                    or expert_metadata.get('matched_alias')
+                ),
+                'oracle_target_box': (
+                    metadata.get('oracle_target_box')
+                    or expert_metadata.get('oracle_target_box')
+                ),
+                'candidate_iou_to_gt': (
+                    metadata.get('candidate_iou_to_gt')
+                    if metadata.get('candidate_iou_to_gt') is not None
+                    else expert_metadata.get('candidate_iou_to_gt')
+                ),
                 'iou_threshold': metadata.get('iou_threshold'),
+                'routing_decision': routing_decision.action,
+                'routing_policy_metadata': dict(routing_decision.metadata),
                 'router_action': router_action,
+                'expert_role': (
+                    None
+                    if expert_result is None
+                    else expert_result.expert_role
+                ),
+                'expert_source': (
+                    None if expert_result is None else expert_result.source
+                ),
+                'expert_confidence': (
+                    None
+                    if expert_result is None
+                    else float(expert_result.confidence)
+                ),
+                'expert_metadata': (
+                    None
+                    if expert_result is None
+                    else expert_metadata
+                ),
+                'missing_expert_error': missing_expert_error,
                 'grounder_invoked': grounder_invoked,
+                'box_refiner_invoked': box_refiner_invoked,
                 'grounder_source': (
                     None if grounder_result is None else grounder_result.source
                 ),

@@ -5,29 +5,33 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
-from ...backends.grounding_dino import (
-    GroundingDinoGeometryClassifier,
-    LocalGroundingDinoRunner,
-)
-from ...backends.qwen25_vl import (
-    BINARY_IMAGE_MODES,
+from ...contracts import ACTION_OUTPUT_SCHEMA, ActionVerifierOutput
+from ...models.qwen25_vl.grounding_parser import (
     DEFAULT_BOUNDARY_TOLERANCE_PIXELS,
+)
+from ...models.qwen25_vl.grounding_prompt import (
     DEFAULT_GROUNDING_PROMPT_PROTOCOL,
+    GROUNDING_PROMPT_PROTOCOLS,
+)
+from ...models.qwen25_vl.preprocessing import GROUNDING_ACTION_IMAGE_MODES
+from ...models.qwen25_vl.runner import (
     DEFAULT_MAX_PIXELS,
     DEFAULT_MIN_PIXELS,
-    DEFAULT_QWEN_CROP_MIN_SIDE,
-    GROUNDING_ACTION_IMAGE_MODES,
-    GROUNDING_PROMPT_PROTOCOLS,
     LocalQwen25VLRunner,
-    Qwen25VLGroundingActionClassifier,
+)
+from ...verifier_backends.qwen25_vl import (
+    BINARY_IMAGE_MODES,
+    DEFAULT_QWEN_CROP_MIN_SIDE,
     Qwen25VLGroundingGeometryClassifier,
     Qwen25VLVerifierBackend,
 )
+from ...models.grounding_dino import LocalGroundingDinoRunner
+from ...verifier_backends import GroundingDinoGeometryClassifier
 from .adapter import GQAControlledExample, load_examples
+from .labels import CONTROLLED_STATUS_TO_ROUTING_ACTION
 from .metrics import (
     compute_binary_alignment_metrics,
     compute_routing_metrics,
-    compute_verifier_metrics,
 )
 
 
@@ -35,16 +39,8 @@ DEFAULT_BENCHMARK = Path(
     'output/verifier_benchmark/gqa_controlled/v1/benchmark.jsonl'
 )
 DEFAULT_MODEL = Path('weights/Qwen2.5-VL-7B-Instruct')
-FIVE_WAY_TO_ROUTING = {
-    'aligned': 'no_action',
-    'wrong_object': 'relocate',
-    'unsupported': 'relocate',
-    'partial_coverage': 'expand',
-    'ambiguous': 'tighten',
-}
 ROUTING_TASK_MODES = (
     'routing_four_way',
-    'routing_option_likelihood',
     'routing_grounding_geometry',
 )
 GEOMETRY_BACKENDS = ('qwen25_vl', 'grounding_dino')
@@ -53,7 +49,7 @@ GEOMETRY_BACKENDS = ('qwen25_vl', 'grounding_dino')
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            'Evaluate selectable verifier and reference-localizer protocols '
+            'Evaluate selectable binary/four-way verifier protocols '
             'on the controlled GQA benchmark.'
         )
     )
@@ -64,13 +60,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--task-mode',
         choices=(
-            'five_way',
             'routing_four_way',
-            'routing_option_likelihood',
             'routing_grounding_geometry',
             'binary_alignment',
         ),
-        default='five_way',
+        default='routing_four_way',
     )
     parser.add_argument(
         '--binary-image-mode',
@@ -82,30 +76,12 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        '--five-way-image-mode',
-        choices=BINARY_IMAGE_MODES,
-        default='marked_plus_crop',
-        help=(
-            'five-way input: crop only, marked full scene only, or marked '
-            'full scene followed by the same crop'
-        ),
-    )
-    parser.add_argument(
         '--routing-image-mode',
         choices=BINARY_IMAGE_MODES,
         default='bbox_image_only',
         help=(
             'routing four-way input: crop only, marked full scene only, or '
             'marked full scene followed by the same crop'
-        ),
-    )
-    parser.add_argument(
-        '--option-image-mode',
-        choices=GROUNDING_ACTION_IMAGE_MODES,
-        default='raw_image',
-        help=(
-            'option-likelihood routing input: clean source image with bbox '
-            'coordinates in text, or the same image with a red bbox overlay'
         ),
     )
     parser.add_argument(
@@ -122,7 +98,7 @@ def parse_args() -> argparse.Namespace:
         choices=GEOMETRY_BACKENDS,
         default='qwen25_vl',
         help=(
-            'reference localizer used by routing_grounding_geometry; the '
+            'reference grounder used by routing_grounding_geometry; the '
             'default preserves the existing Qwen behavior'
         ),
     )
@@ -272,33 +248,18 @@ def _percentile(values: List[float], quantile: float):
     )
 
 
-def _result_record(
-        example: GQAControlledExample,
-        candidate_bbox,
-        lookup,
-) -> Dict[str, Any]:
-    status = lookup.metadata.get('status')
-    result = lookup.result
+def _canonical_action_fields(output: ActionVerifierOutput) -> Dict[str, Any]:
     return {
-        'event_id': example.event_id,
-        'sample_index': example.sample_index,
-        'split': example.split,
-        'image_id': example.image_id,
-        'source_image': str(example.source_image),
-        'object_reference': example.object_reference,
-        'candidate_box_pixel_xyxy': list(example.candidate_box_pixel_xyxy),
-        'candidate_box_padded_normalized_xyxy': list(candidate_bbox),
-        'expected_status': example.expected_status,
-        'expected_verdict': example.expected_verdict,
-        'expected_reason': example.expected_reason,
-        'predicted_status': status,
-        'predicted_verdict': result.verdict,
-        'predicted_reason': result.reason,
-        'confidence': result.confidence,
-        'correct': status == example.expected_status,
-        'parse_failed': bool(lookup.metadata.get('parse_failed')),
-        'error': lookup.error,
-        'verifier_metadata': lookup.metadata,
+        'verifier_output_schema': ACTION_OUTPUT_SCHEMA,
+        'predicted_action': output.predicted_action,
+        'action_probabilities': (
+            None
+            if output.action_probabilities is None
+            else dict(output.action_probabilities)
+        ),
+        'action_confidence': float(output.confidence),
+        'verifier_abstained': output.abstained,
+        'action_error': output.error,
     }
 
 
@@ -308,6 +269,30 @@ def _binary_result_record(
         lookup,
 ) -> Dict[str, Any]:
     expected_alignment = example.expected_status == 'aligned'
+    if lookup.aligned is None:
+        output = ActionVerifierOutput.unknown(
+            error=lookup.error,
+            metadata={
+                **dict(lookup.metadata),
+                'probability_source': 'unavailable_abstained',
+            },
+        )
+    else:
+        output = ActionVerifierOutput(
+            predicted_action=(
+                'no_action' if lookup.aligned else 'relocate'
+            ),
+            action_probabilities=None,
+            confidence=(
+                0.0
+                if lookup.confidence is None
+                else float(lookup.confidence)
+            ),
+            metadata={
+                **dict(lookup.metadata),
+                'probability_source': 'unavailable_binary_hard_label',
+            },
+        )
     return {
         'event_id': example.event_id,
         'sample_index': example.sample_index,
@@ -325,6 +310,7 @@ def _binary_result_record(
         'parse_failed': bool(lookup.metadata.get('parse_failed')),
         'error': lookup.error,
         'verifier_metadata': lookup.metadata,
+        **_canonical_action_fields(output),
     }
 
 
@@ -333,7 +319,31 @@ def _routing_result_record(
         candidate_bbox,
         lookup,
 ) -> Dict[str, Any]:
-    expected_routing_status = FIVE_WAY_TO_ROUTING[example.expected_status]
+    expected_routing_status = CONTROLLED_STATUS_TO_ROUTING_ACTION[
+        example.expected_status
+    ]
+    if lookup.status is None:
+        output = ActionVerifierOutput.unknown(
+            error=lookup.error,
+            metadata={
+                **dict(lookup.metadata),
+                'probability_source': 'unavailable_abstained',
+            },
+        )
+    else:
+        output = ActionVerifierOutput(
+            predicted_action=lookup.status,
+            action_probabilities=None,
+            confidence=(
+                0.0
+                if lookup.confidence is None
+                else float(lookup.confidence)
+            ),
+            metadata={
+                **dict(lookup.metadata),
+                'probability_source': 'unavailable_hard_label',
+            },
+        )
     return {
         'event_id': example.event_id,
         'sample_index': example.sample_index,
@@ -351,14 +361,17 @@ def _routing_result_record(
         'parse_failed': bool(lookup.metadata.get('parse_failed')),
         'error': lookup.error,
         'verifier_metadata': lookup.metadata,
+        **_canonical_action_fields(output),
     }
 
 
-def _routing_option_result_record(
+def _routing_action_result_record(
         example: GQAControlledExample,
-        lookup,
+        output: ActionVerifierOutput,
 ) -> Dict[str, Any]:
-    expected_routing_status = FIVE_WAY_TO_ROUTING[example.expected_status]
+    expected_routing_status = CONTROLLED_STATUS_TO_ROUTING_ACTION[
+        example.expected_status
+    ]
     return {
         'event_id': example.event_id,
         'sample_index': example.sample_index,
@@ -370,12 +383,13 @@ def _routing_option_result_record(
         'candidate_box_padded_normalized_xyxy': None,
         'expected_status': example.expected_status,
         'expected_routing_status': expected_routing_status,
-        'predicted_routing_status': lookup.status,
-        'confidence': lookup.confidence,
-        'correct': lookup.status == expected_routing_status,
-        'parse_failed': bool(lookup.metadata.get('parse_failed')),
-        'error': lookup.error,
-        'verifier_metadata': lookup.metadata,
+        'predicted_routing_status': output.predicted_action,
+        'confidence': output.confidence,
+        'correct': output.predicted_action == expected_routing_status,
+        'parse_failed': bool(output.metadata.get('parse_failed')),
+        'error': output.error,
+        'verifier_metadata': output.metadata,
+        **_canonical_action_fields(output),
     }
 
 
@@ -432,27 +446,12 @@ def main() -> None:
             '--binary-image-mode only applies with --task-mode binary_alignment'
         )
     if (
-        args.task_mode != 'five_way'
-        and args.five_way_image_mode != 'marked_plus_crop'
-    ):
-        raise ValueError(
-            '--five-way-image-mode only applies with --task-mode five_way'
-        )
-    if (
         args.task_mode != 'routing_four_way'
         and args.routing_image_mode != 'bbox_image_only'
     ):
         raise ValueError(
             '--routing-image-mode only applies with '
             '--task-mode routing_four_way'
-        )
-    if (
-        args.task_mode != 'routing_option_likelihood'
-        and args.option_image_mode != 'raw_image'
-    ):
-        raise ValueError(
-            '--option-image-mode only applies with '
-            '--task-mode routing_option_likelihood'
         )
     if (
         args.task_mode != 'routing_grounding_geometry'
@@ -484,7 +483,6 @@ def main() -> None:
     ]
 
     backend = None
-    action_classifier = None
     geometry_classifier = None
     if (
         args.task_mode == 'routing_grounding_geometry'
@@ -518,40 +516,33 @@ def main() -> None:
             crop_min_side=args.crop_min_side,
             parse_fail_open=True,
         )
-        action_classifier = Qwen25VLGroundingActionClassifier(runner=runner)
-        geometry_classifier = Qwen25VLGroundingGeometryClassifier(
-            runner=runner,
-            accept_iou_threshold=args.grounding_accept_iou,
-            containment_threshold=args.grounding_containment,
-            boundary_tolerance_pixels=args.grounding_boundary_tolerance,
-            prompt_protocol=args.grounding_prompt_protocol,
-        )
+        if args.task_mode == 'routing_grounding_geometry':
+            geometry_classifier = Qwen25VLGroundingGeometryClassifier(
+                runner=runner,
+                accept_iou_threshold=args.grounding_accept_iou,
+                containment_threshold=args.grounding_containment,
+                boundary_tolerance_pixels=args.grounding_boundary_tolerance,
+                prompt_protocol=args.grounding_prompt_protocol,
+            )
 
     output_mode = 'a' if existing else 'w'
     with args.output.open(output_mode, encoding='utf-8') as handle:
         for example in _progress(pending, len(pending)):
             try:
-                if args.task_mode == 'routing_option_likelihood':
-                    action_input = example.to_grounding_action_input()
-                    assert action_classifier is not None
-                    lookup = action_classifier.classify(
-                        action_input,
-                        image_mode=args.option_image_mode,
-                    )
-                    record = _routing_option_result_record(
-                        example,
-                        lookup,
-                    )
-                elif args.task_mode == 'routing_grounding_geometry':
-                    action_input = example.to_grounding_action_input()
+                if args.task_mode == 'routing_grounding_geometry':
                     assert geometry_classifier is not None
-                    lookup = geometry_classifier.classify(
+                    action_input = (
+                        example.to_geometry_verification_input()
+                        if args.geometry_backend == 'grounding_dino'
+                        else example.to_grounding_action_input()
+                    )
+                    output = geometry_classifier.classify_action(
                         action_input,
                         image_mode=args.grounding_image_mode,
                     )
-                    record = _routing_option_result_record(
+                    record = _routing_action_result_record(
                         example,
-                        lookup,
+                        output,
                     )
                 else:
                     candidate = example.to_candidate_input()
@@ -577,14 +568,8 @@ def main() -> None:
                             lookup,
                         )
                     else:
-                        lookup = backend.verify_candidate(
-                            candidate,
-                            image_mode=args.five_way_image_mode,
-                        )
-                        record = _result_record(
-                            example,
-                            candidate.candidate_bbox,
-                            lookup,
+                        raise AssertionError(
+                            f'unhandled task mode: {args.task_mode}'
                         )
             except Exception as error:
                 if args.fail_fast:
@@ -604,7 +589,9 @@ def main() -> None:
                     'expected_verdict': example.expected_verdict,
                     'expected_reason': example.expected_reason,
                     'expected_routing_status': (
-                        FIVE_WAY_TO_ROUTING[example.expected_status]
+                        CONTROLLED_STATUS_TO_ROUTING_ACTION[
+                            example.expected_status
+                        ]
                         if args.task_mode in ROUTING_TASK_MODES
                         else None
                     ),
@@ -614,11 +601,13 @@ def main() -> None:
                         else None
                     ),
                     'predicted_alignment': None,
-                    'predicted_status': None,
                     'predicted_routing_status': None,
-                    'predicted_verdict': None,
-                    'predicted_reason': None,
                     'confidence': None,
+                    'predicted_action': None,
+                    'action_probabilities': None,
+                    'action_confidence': 0.0,
+                    'verifier_abstained': True,
+                    'action_error': f'{type(error).__name__}: {error}',
                     'correct': False,
                     'parse_failed': False,
                     'error': f'{type(error).__name__}: {error}',
@@ -630,16 +619,12 @@ def main() -> None:
                 predicted = (
                     record.get('predicted_alignment')
                     if args.task_mode == 'binary_alignment'
-                    else (
-                        record.get('predicted_routing_status')
-                        if args.task_mode in ROUTING_TASK_MODES
-                        else record.get('predicted_status')
-                    )
+                    else record.get('predicted_routing_status')
                 )
                 expected = (
                     record.get('expected_routing_status')
                     if args.task_mode in ROUTING_TASK_MODES
-                    else example.expected_status
+                    else record.get('expected_alignment')
                 )
                 print(
                     f"[{example.event_id}] expected={expected} "
@@ -651,11 +636,6 @@ def main() -> None:
                 raw_response = record['verifier_metadata'].get('raw_response')
                 if raw_response is not None:
                     print(f'  raw: {raw_response}', flush=True)
-                option_losses = record['verifier_metadata'].get(
-                    'option_negative_log_likelihoods'
-                )
-                if option_losses is not None:
-                    print(f'  option NLL: {option_losses}', flush=True)
 
     results = _read_jsonl(args.output)
     selected_ids = {example.event_id for example in examples}
@@ -671,20 +651,9 @@ def main() -> None:
         args.binary_image_mode
         if args.task_mode == 'binary_alignment'
         else (
-            (
-                args.option_image_mode
-                if args.task_mode == 'routing_option_likelihood'
-                else args.grounding_image_mode
-            )
-            if args.task_mode in (
-                'routing_option_likelihood',
-                'routing_grounding_geometry',
-            )
-            else (
-                args.routing_image_mode
-                if args.task_mode == 'routing_four_way'
-                else args.five_way_image_mode
-            )
+            args.grounding_image_mode
+            if args.task_mode == 'routing_grounding_geometry'
+            else args.routing_image_mode
         )
     )
     model_images_by_mode = {
@@ -761,10 +730,6 @@ def main() -> None:
         'routing_four_way': (
             f'qwen25_vl_routing_four_way_{args.routing_image_mode}'
         ),
-        'routing_option_likelihood': (
-            'qwen25_vl_grounding_action_option_likelihood_'
-            f'{args.option_image_mode}'
-        ),
         'routing_grounding_geometry': (
             (
                 'grounding_dino_geometry_router_raw_image'
@@ -774,9 +739,6 @@ def main() -> None:
                     f'{args.grounding_image_mode}'
                 )
             )
-        ),
-        'five_way': (
-            f'qwen25_vl_zero_shot_five_way_{args.five_way_image_mode}'
         ),
     }[args.task_mode]
     summary = {
@@ -794,19 +756,9 @@ def main() -> None:
             if args.task_mode == 'binary_alignment'
             else None
         ),
-        'five_way_image_mode': (
-            args.five_way_image_mode
-            if args.task_mode == 'five_way'
-            else None
-        ),
         'routing_image_mode': (
             args.routing_image_mode
             if args.task_mode == 'routing_four_way'
-            else None
-        ),
-        'option_image_mode': (
-            args.option_image_mode
-            if args.task_mode == 'routing_option_likelihood'
             else None
         ),
         'grounding_image_mode': (
@@ -885,10 +837,7 @@ def main() -> None:
                         'original-image pixel xyxy and clean image are jointly '
                         'scaled to the exact Qwen smart-resized image frame'
                     )
-                    if args.task_mode in (
-                        'routing_option_likelihood',
-                        'routing_grounding_geometry',
-                    )
+                    if args.task_mode == 'routing_grounding_geometry'
                     else (
                         'original-image pixel xyxy to normalized xyxy on '
                         'VoCoT center-padded square'
@@ -913,11 +862,7 @@ def main() -> None:
         'metrics': (
             compute_binary_alignment_metrics(selected_results)
             if args.task_mode == 'binary_alignment'
-            else (
-                compute_routing_metrics(selected_results)
-                if args.task_mode in ROUTING_TASK_MODES
-                else compute_verifier_metrics(selected_results)
-            )
+            else compute_routing_metrics(selected_results)
         ),
     }
     summary_path = _summary_path(args.output)
@@ -935,7 +880,7 @@ def main() -> None:
             f"({metrics['correct']}/{metrics['total']})"
         )
         print(f"Misalignment recall: {metrics['recall'] * 100:.2f}%")
-    elif args.task_mode in ROUTING_TASK_MODES:
+    else:
         print(
             'Routing four-way accuracy: '
             f"{metrics['four_way']['accuracy'] * 100:.2f}% "
@@ -944,20 +889,6 @@ def main() -> None:
         print(
             'Macro-F1: '
             f"{metrics['four_way']['macro_f1'] * 100:.2f}%"
-        )
-    else:
-        print(
-            'Five-way accuracy: '
-            f"{metrics['five_way']['accuracy'] * 100:.2f}% "
-            f"({metrics['five_way']['correct']}/{metrics['total']})"
-        )
-        print(
-            'Macro-F1: '
-            f"{metrics['five_way']['macro_f1'] * 100:.2f}%"
-        )
-        print(
-            'Binary aligned-vs-invalid accuracy: '
-            f"{metrics['binary_aligned_vs_invalid']['end_to_end_accuracy'] * 100:.2f}%"
         )
     print(
         'Parse success rate: '
