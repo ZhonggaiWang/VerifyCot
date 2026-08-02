@@ -5,25 +5,27 @@ This directory is organised by dataset:
 - `vstar/`: VStar counterfactual, online-oracle, and box-audit scripts.
 - `gqa/`: GQA-val subset construction plus counterfactual and online-oracle evaluations.
 
-## VStar natural-error repair
+## Output contract
 
-This experiment reads the untouched baseline trajectories saved by the
-full-238 online-oracle run, strictly rematches each baseline coordinate to an
-explicit GT target, and selects the first matched coordinate whose IoU is below
-the threshold.  The model receives a one-shot `misaligned/wrong_object`
-decision through concise text-only feedback; the GT coordinate itself is never
-shown to the model.  All later CoT tokens are freely generated.
+New experiment results use one directory per logical run:
 
-```bash
-CUDA_VISIBLE_DEVICES=0 conda run -n vocot python \
-  eval/Oracle_experiment/vstar/evaluate_natural_error_repair.py
+```text
+output/<dataset>/runs/<split>/<study>/<method>/<setting>/<run_id>/
 ```
 
-The default output is timestamped below
-`output/vstar/natural_error_repair/text_only_concise/`.  Use
-`--sample-id main:9 --verbose` for a single-sample smoke test.  Samples without
-a strictly matchable natural error pass through unchanged and stay in the
-full-dataset denominator.
+The run root contains the authoritative `results.jsonl`,
+`results.summary.json`, `run.config.json`, and `run.status.json`; verifier runs
+may additionally write `verifier_events.jsonl`. Annotation manifests remain
+stable inputs under `output/<dataset>/annotations/` and do not belong below
+`runs/`.
+
+Where an evaluator supports it, omit `--output` and use `--run-id` (plus
+`--run-split` for a non-default split) to select this layout. An explicit
+`--output` is retained as a compatibility interface for archived commands and
+launcher-resolved exact paths; it is not a second recommended hierarchy.
+Historical results remain at their recorded paths and are not moved. See
+`output/README.md` and `output/LEGACY_INDEX.md` for the complete contract and
+legacy mapping.
 
 ## GQA oracle subset
 
@@ -55,19 +57,40 @@ normalised exact-answer comparison, not option likelihood.
 ```bash
 CUDA_VISIBLE_DEVICES=0 python eval/Oracle_experiment/gqa/evaluate_counterfactual.py \
   --manifest-path output/gqa/annotations/oracle_val_1000/manifest.jsonl \
-  --output output/gqa/counterfactual/random_box/random_seed2026/results.jsonl \
-  --perturb-mode random_box --perturb-position random
+  --perturb-mode random_box --perturb-position random \
+  --run-split val_1000_dev \
+  --run-id 20260801_153000__random_box
 ```
+
+This example writes to
+`output/gqa/runs/val_1000_dev/counterfactual/random_box/random/20260801_153000__random_box/`.
 
 Use `--perturb-position first` or `last` for the fixed-position settings;
 use `--perturb-mode remove_grounding` to omit the selected coordinate and its
 REFbind feature altogether.  Output automatically resumes by `sample_index`;
 pass `--no-resume` to start a fresh run.
 
-For a multi-GPU run, the scheduler partitions the manifest into non-overlapping
-contiguous `sample_index` shards, waits for an allowed idle GPU for each shard,
-and merges all shard results automatically. `GPU_IDS` uses physical
-`nvidia-smi` indices.
+The GQA launcher handles one logical run in either direct or sharded mode.
+With `NUM_SHARDS=1`, it writes `results.jsonl`, `results.summary.json`, and the
+run metadata directly in the canonical run root and does not create
+`shards/`. With `NUM_SHARDS>1`, it partitions the manifest into non-overlapping
+contiguous `sample_index` ranges, writes each partial run under
+`shards/shard_NNN/`, then deterministically merges and re-summarises the
+authoritative root result. `GPU_IDS` uses physical `nvidia-smi` indices. If
+`NUM_SHARDS` is omitted, it defaults to the number of selected GPUs.
+Before merging, the launcher verifies both the exact shard set and continuous
+coverage of the requested `sample_index` interval, so an incomplete run cannot
+silently become a root summary.
+
+Single-partition launcher example:
+
+```bash
+GPU_IDS=0 NUM_SHARDS=1 \
+PERTURB_MODE=random_box PERTURB_POSITION=random \
+scripts/run_gqa_counterfactual.sh
+```
+
+Multi-partition launcher example:
 
 ```bash
 GPU_IDS=0,1,2 NUM_SHARDS=3 \
@@ -90,8 +113,12 @@ generated.
 ```bash
 CUDA_VISIBLE_DEVICES=0 python eval/Oracle_experiment/gqa/evaluate_online_oracle.py \
   --manifest-path output/gqa/annotations/oracle_val_1000/manifest.jsonl \
-  --output output/gqa/online_oracle/strict_name_gt/results.jsonl
+  --run-split val_1000_dev \
+  --run-id 20260801_153000__always_gt
 ```
+
+This writes to
+`output/gqa/runs/val_1000_dev/oracle/always_gt/default/20260801_153000__always_gt/`.
 
 The multi-GPU equivalent is:
 
@@ -107,9 +134,12 @@ CUDA_VISIBLE_DEVICES=0,1,2 NUM_SHARDS=3 \
 scripts/run_gqa_full_intervention_suite.sh
 ```
 
-The suite keeps stages separate under
-`output/gqa/full_intervention_suite/<timestamp>/`; within a stage, all selected
-cards run independent shards in parallel.
+By default the suite keeps each stage in its canonical study/method/setting
+directory under `output/gqa/runs/` and reuses one `SUITE_TAG` as the `run_id`
+across those separate stage directories. Within a stage, selected cards run
+data-parallel shards only when `NUM_SHARDS>1`. Setting `SUITE_ROOT` (or the
+legacy `OUTPUT_ROOT` alias) explicitly retains the older custom nested-suite
+placement for compatibility.
 
 Each `results.summary.json` contains paired baseline/intervention accuracy,
 answer-change counts, correctness transitions, and structural-question-type

@@ -1,9 +1,9 @@
-"""Build a controlled five-way GQA object-coordinate verifier benchmark.
+"""Build a controlled GQA benchmark with five construction subtypes.
 
 The benchmark intentionally uses only a canonical object reference and an
 image with one uniformly rendered candidate box as the model-facing input.
 Full GT and construction metadata remain in JSONL solely for auditing and
-evaluation.
+binary/four-way evaluation.
 """
 
 import argparse

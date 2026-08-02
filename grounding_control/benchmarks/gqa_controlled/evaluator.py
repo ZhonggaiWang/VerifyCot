@@ -1,0 +1,1070 @@
+"""Run selectable verifier backends on the controlled GQA benchmark."""
+
+import argparse
+import json
+from pathlib import Path
+import re
+import sys
+from typing import Any, Dict, Iterable, List
+
+from ...four_way import ACTION_OUTPUT_SCHEMA, ActionVerifierOutput
+from ...models.qwen25_vl.grounding_parser import (
+    DEFAULT_BOUNDARY_TOLERANCE_PIXELS,
+)
+from ...models.qwen25_vl.grounding_prompt import (
+    DEFAULT_GROUNDING_PROMPT_PROTOCOL,
+    GROUNDING_PROMPT_PROTOCOLS,
+)
+from ...models.qwen25_vl.preprocessing import GROUNDING_ACTION_IMAGE_MODES
+from ...models.qwen25_vl.runner import (
+    DEFAULT_MAX_PIXELS,
+    DEFAULT_MIN_PIXELS,
+    LocalQwen25VLRunner,
+)
+from ...verifiers.qwen25_vl import (
+    BINARY_IMAGE_MODES,
+    DEFAULT_QWEN_CROP_MIN_SIDE,
+)
+from ...four_way.verifiers import GroundingDinoGeometryClassifier
+from ...four_way.verifiers.qwen25_vl import (
+    Qwen25VLGroundingGeometryClassifier,
+    Qwen25VLVerifierBackend,
+)
+from ...models.grounding_dino import LocalGroundingDinoRunner
+from ...run_paths import (
+    RunLayout,
+    create_exact_output_layout,
+    create_run_layout,
+    write_run_config,
+    write_run_status,
+)
+from .adapter import GQAControlledExample, load_examples
+from .labels import CONTROLLED_STATUS_TO_ROUTING_ACTION
+from .metrics import (
+    compute_binary_alignment_metrics,
+    compute_routing_metrics,
+)
+
+
+DEFAULT_BENCHMARK = Path(
+    'output/verifier_benchmark/gqa_controlled/v1/benchmark.jsonl'
+)
+DEFAULT_MODEL = Path('weights/Qwen2.5-VL-7B-Instruct')
+ROUTING_TASK_MODES = (
+    'routing_four_way',
+    'routing_grounding_geometry',
+)
+GEOMETRY_BACKENDS = ('qwen25_vl', 'grounding_dino')
+
+
+def _path_token(value: Any) -> str:
+    token = str(value).strip().lower().replace('.', 'p')
+    token = re.sub(r'[^a-z0-9]+', '_', token).strip('_')
+    if not token:
+        raise ValueError('benchmark path token must not be empty')
+    return token
+
+
+def _float_token(value: float) -> str:
+    return _path_token(format(float(value), 'g'))
+
+
+def _backend_model_method(args: argparse.Namespace) -> str:
+    if (
+        args.task_mode == 'routing_grounding_geometry'
+        and args.geometry_backend == 'grounding_dino'
+    ):
+        backend = 'grounding_dino'
+    else:
+        backend = 'qwen25_vl'
+    model_slug = _path_token(Path(args.model_path).name)
+    if backend == 'qwen25_vl':
+        size = re.search(r'(?:^|_)(\d+(?:p\d+)?)b(?:_|$)', model_slug)
+        return (
+            'qwen25_vl_{}b'.format(size.group(1))
+            if size else 'qwen25_vl__{}'.format(model_slug)
+        )
+    for variant in ('tiny', 'base', 'large'):
+        if re.search(r'(?:^|_){}(?:_|$)'.format(variant), model_slug):
+            return 'grounding_dino_{}'.format(variant)
+    return 'grounding_dino__{}'.format(model_slug)
+
+
+def benchmark_run_identity(args: argparse.Namespace) -> Dict[str, str]:
+    """Return canonical path dimensions for one controlled-GQA run."""
+    study = (
+        'binary' if args.task_mode == 'binary_alignment' else 'four_way'
+    )
+    if args.task_mode == 'binary_alignment':
+        setting = args.binary_image_mode
+    elif args.task_mode == 'routing_four_way':
+        setting = args.routing_image_mode
+    elif args.geometry_backend == 'grounding_dino':
+        setting = 'raw_image__box_{}__iou_{}'.format(
+            _float_token(args.dino_box_threshold),
+            _float_token(args.grounding_accept_iou),
+        )
+    else:
+        setting = '{}__{}__iou_{}'.format(
+            _path_token(args.grounding_prompt_protocol),
+            args.grounding_image_mode,
+            _float_token(args.grounding_accept_iou),
+        )
+    return {
+        'dataset': 'verifier_benchmark',
+        'split': 'gqa_controlled_v1_{}'.format(args.split),
+        'study': study,
+        'method': _backend_model_method(args),
+        'setting': setting,
+    }
+
+
+def resolve_benchmark_run_layout(args: argparse.Namespace) -> RunLayout:
+    """Resolve canonical defaults while preserving exact explicit output."""
+    identity = benchmark_run_identity(args)
+    canonical = create_run_layout(
+        **identity,
+        run_id=args.run_id,
+        output_root=args.output_root,
+    )
+    if args.output is None:
+        return canonical
+    return create_exact_output_layout(
+        **identity,
+        run_id=canonical.run_id,
+        output=args.output,
+    )
+
+
+def benchmark_summary_path(layout: RunLayout) -> Path:
+    """Preserve the evaluator's historical suffix rule for exact output."""
+    if layout.is_exact_output and layout.results_path.suffix != '.jsonl':
+        return Path(str(layout.results_path) + '.summary.json')
+    return layout.summary_path
+
+
+def _jsonable_arguments(args: argparse.Namespace) -> Dict[str, Any]:
+    return {
+        key: str(value) if isinstance(value, Path) else value
+        for key, value in vars(args).items()
+    }
+
+
+def parse_args(argv=None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=(
+            'Evaluate selectable binary/four-way verifier protocols '
+            'on the controlled GQA benchmark.'
+        )
+    )
+    parser.add_argument('--benchmark', type=Path, default=DEFAULT_BENCHMARK)
+    parser.add_argument('--model-path', type=Path, default=DEFAULT_MODEL)
+    parser.add_argument(
+        '--output',
+        type=Path,
+        default=None,
+        help=(
+            'Exact legacy results filename. Omit it to use the canonical '
+            'verifier benchmark run hierarchy.'
+        ),
+    )
+    parser.add_argument('--output-root', type=Path, default=Path('output'))
+    parser.add_argument('--run-id', default=None)
+    parser.add_argument('--split', choices=('dev', 'test', 'all'), default='test')
+    parser.add_argument(
+        '--task-mode',
+        choices=(
+            'routing_four_way',
+            'routing_grounding_geometry',
+            'binary_alignment',
+        ),
+        default='routing_four_way',
+    )
+    parser.add_argument(
+        '--binary-image-mode',
+        choices=BINARY_IMAGE_MODES,
+        default='crop_only',
+        help=(
+            'binary ablation input: crop only, marked full scene only, or '
+            'marked full scene followed by the same crop'
+        ),
+    )
+    parser.add_argument(
+        '--routing-image-mode',
+        choices=BINARY_IMAGE_MODES,
+        default='bbox_image_only',
+        help=(
+            'routing four-way input: crop only, marked full scene only, or '
+            'marked full scene followed by the same crop'
+        ),
+    )
+    parser.add_argument(
+        '--grounding-image-mode',
+        choices=GROUNDING_ACTION_IMAGE_MODES,
+        default='raw_image',
+        help=(
+            'geometry routing input: clean source image or source image with '
+            'the candidate outlined in red'
+        ),
+    )
+    parser.add_argument(
+        '--geometry-backend',
+        choices=GEOMETRY_BACKENDS,
+        default='qwen25_vl',
+        help=(
+            'reference grounder used by routing_grounding_geometry; the '
+            'default preserves the existing Qwen behavior'
+        ),
+    )
+    parser.add_argument(
+        '--grounding-accept-iou',
+        type=float,
+        default=0.5,
+        help='accept the candidate when candidate/grounder IoU reaches this',
+    )
+    parser.add_argument(
+        '--grounding-containment',
+        type=float,
+        default=0.7,
+        help=(
+            'directed coverage required to classify a low-IoU candidate as '
+            'expand or tighten instead of relocate'
+        ),
+    )
+    parser.add_argument(
+        '--grounding-boundary-tolerance',
+        type=float,
+        default=DEFAULT_BOUNDARY_TOLERANCE_PIXELS,
+        help=(
+            'maximum per-side pixel excursion that is clipped and audited '
+            'instead of treated as a grounding parse failure'
+        ),
+    )
+    parser.add_argument(
+        '--grounding-prompt-protocol',
+        choices=GROUNDING_PROMPT_PROTOCOLS,
+        default=DEFAULT_GROUNDING_PROMPT_PROTOCOL,
+        help=(
+            'compact original localization prompt or strict one-object JSON '
+            'protocol'
+        ),
+    )
+    parser.add_argument(
+        '--dino-box-threshold',
+        type=float,
+        default=0.3,
+        help='Grounding DINO box confidence threshold, selected on dev only',
+    )
+    parser.add_argument(
+        '--dino-text-threshold',
+        type=float,
+        default=0.25,
+        help='Grounding DINO text confidence threshold, selected on dev only',
+    )
+    parser.add_argument(
+        '--dino-dtype',
+        choices=(
+            'auto',
+            'float32',
+            'fp32',
+            'float16',
+            'fp16',
+            'bfloat16',
+            'bf16',
+        ),
+        default='float32',
+        help='Grounding DINO inference dtype; independent of Qwen --dtype',
+    )
+    parser.add_argument(
+        '--dino-top-k-log',
+        type=int,
+        default=20,
+        help='maximum number of raw Grounding DINO detections logged per item',
+    )
+    parser.add_argument(
+        '--crop-min-side',
+        type=int,
+        default=DEFAULT_QWEN_CROP_MIN_SIDE,
+        help='upscale candidate crops whose shortest side is below this value',
+    )
+    parser.add_argument('--device', default='cuda:0')
+    parser.add_argument('--dtype', default='bfloat16')
+    parser.add_argument('--max-new-tokens', type=int, default=64)
+    parser.add_argument(
+        '--min-pixels',
+        type=int,
+        default=DEFAULT_MIN_PIXELS,
+        help='minimum Qwen image pixels per image',
+    )
+    parser.add_argument(
+        '--max-pixels',
+        type=int,
+        default=DEFAULT_MAX_PIXELS,
+        help=(
+            'maximum Qwen image pixels per image; default corresponds to '
+            'about 512 merged visual tokens per image'
+        ),
+    )
+    parser.add_argument('--attn-implementation', default='sdpa')
+    parser.add_argument('--start-index', type=int, default=0)
+    parser.add_argument('--limit', type=int)
+    parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--overwrite', action='store_true')
+    parser.add_argument('--fail-fast', action='store_true')
+    parser.add_argument('--verbose', action='store_true')
+    return parser.parse_args(argv)
+
+
+def _read_jsonl(path: Path) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows = []
+    with path.open('r', encoding='utf-8') as handle:
+        for line_number, line in enumerate(handle, start=1):
+            if not line.strip():
+                continue
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f'invalid existing result at {path}:{line_number}: {error}'
+                ) from error
+    return rows
+
+
+def _progress(examples: Iterable[GQAControlledExample], total: int):
+    try:
+        from tqdm import tqdm
+    except ImportError:
+        return examples
+    return tqdm(examples, total=total, desc='GQA verifier benchmark')
+
+
+def _percentile(values: List[float], quantile: float):
+    if not values:
+        return None
+    ordered = sorted(float(value) for value in values)
+    if len(ordered) == 1:
+        return ordered[0]
+    position = (len(ordered) - 1) * quantile
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    fraction = position - lower
+    return (
+        ordered[lower] * (1.0 - fraction)
+        + ordered[upper] * fraction
+    )
+
+
+def _canonical_action_fields(output: ActionVerifierOutput) -> Dict[str, Any]:
+    return {
+        'verifier_output_schema': ACTION_OUTPUT_SCHEMA,
+        'predicted_action': output.predicted_action,
+        'action_probabilities': (
+            None
+            if output.action_probabilities is None
+            else dict(output.action_probabilities)
+        ),
+        'action_confidence': float(output.confidence),
+        'verifier_abstained': output.abstained,
+        'action_error': output.error,
+    }
+
+
+def _binary_result_record(
+        example: GQAControlledExample,
+        candidate_bbox,
+        lookup,
+) -> Dict[str, Any]:
+    expected_alignment = example.expected_status == 'aligned'
+    if lookup.aligned is None:
+        output = ActionVerifierOutput.unknown(
+            error=lookup.error,
+            metadata={
+                **dict(lookup.metadata),
+                'probability_source': 'unavailable_abstained',
+            },
+        )
+    else:
+        output = ActionVerifierOutput(
+            predicted_action=(
+                'no_action' if lookup.aligned else 'relocate'
+            ),
+            action_probabilities=None,
+            confidence=(
+                0.0
+                if lookup.confidence is None
+                else float(lookup.confidence)
+            ),
+            metadata={
+                **dict(lookup.metadata),
+                'probability_source': 'unavailable_binary_hard_label',
+            },
+        )
+    return {
+        'event_id': example.event_id,
+        'sample_index': example.sample_index,
+        'split': example.split,
+        'image_id': example.image_id,
+        'source_image': str(example.source_image),
+        'object_reference': example.object_reference,
+        'candidate_box_pixel_xyxy': list(example.candidate_box_pixel_xyxy),
+        'candidate_box_padded_normalized_xyxy': list(candidate_bbox),
+        'expected_status': example.expected_status,
+        'expected_alignment': expected_alignment,
+        'predicted_alignment': lookup.aligned,
+        'confidence': lookup.confidence,
+        'correct': lookup.aligned == expected_alignment,
+        'parse_failed': bool(lookup.metadata.get('parse_failed')),
+        'error': lookup.error,
+        'verifier_metadata': lookup.metadata,
+        **_canonical_action_fields(output),
+    }
+
+
+def _routing_result_record(
+        example: GQAControlledExample,
+        candidate_bbox,
+        lookup,
+) -> Dict[str, Any]:
+    expected_routing_status = CONTROLLED_STATUS_TO_ROUTING_ACTION[
+        example.expected_status
+    ]
+    if lookup.status is None:
+        output = ActionVerifierOutput.unknown(
+            error=lookup.error,
+            metadata={
+                **dict(lookup.metadata),
+                'probability_source': 'unavailable_abstained',
+            },
+        )
+    else:
+        output = ActionVerifierOutput(
+            predicted_action=lookup.status,
+            action_probabilities=None,
+            confidence=(
+                0.0
+                if lookup.confidence is None
+                else float(lookup.confidence)
+            ),
+            metadata={
+                **dict(lookup.metadata),
+                'probability_source': 'unavailable_hard_label',
+            },
+        )
+    return {
+        'event_id': example.event_id,
+        'sample_index': example.sample_index,
+        'split': example.split,
+        'image_id': example.image_id,
+        'source_image': str(example.source_image),
+        'object_reference': example.object_reference,
+        'candidate_box_pixel_xyxy': list(example.candidate_box_pixel_xyxy),
+        'candidate_box_padded_normalized_xyxy': list(candidate_bbox),
+        'expected_status': example.expected_status,
+        'expected_routing_status': expected_routing_status,
+        'predicted_routing_status': lookup.status,
+        'confidence': lookup.confidence,
+        'correct': lookup.status == expected_routing_status,
+        'parse_failed': bool(lookup.metadata.get('parse_failed')),
+        'error': lookup.error,
+        'verifier_metadata': lookup.metadata,
+        **_canonical_action_fields(output),
+    }
+
+
+def _routing_action_result_record(
+        example: GQAControlledExample,
+        output: ActionVerifierOutput,
+) -> Dict[str, Any]:
+    expected_routing_status = CONTROLLED_STATUS_TO_ROUTING_ACTION[
+        example.expected_status
+    ]
+    return {
+        'event_id': example.event_id,
+        'sample_index': example.sample_index,
+        'split': example.split,
+        'image_id': example.image_id,
+        'source_image': str(example.source_image),
+        'object_reference': example.object_reference,
+        'candidate_box_pixel_xyxy': list(example.candidate_box_pixel_xyxy),
+        'candidate_box_padded_normalized_xyxy': None,
+        'expected_status': example.expected_status,
+        'expected_routing_status': expected_routing_status,
+        'predicted_routing_status': output.predicted_action,
+        'confidence': output.confidence,
+        'correct': output.predicted_action == expected_routing_status,
+        'parse_failed': bool(output.metadata.get('parse_failed')),
+        'error': output.error,
+        'verifier_metadata': output.metadata,
+        **_canonical_action_fields(output),
+    }
+
+
+def _run_evaluation(
+        args: argparse.Namespace,
+        layout: RunLayout,
+        lifecycle: Dict[str, bool]) -> None:
+    if args.start_index < 0:
+        raise ValueError('--start-index must be non-negative')
+    if args.limit is not None and args.limit <= 0:
+        raise ValueError('--limit must be positive')
+    if args.max_new_tokens <= 0:
+        raise ValueError('--max-new-tokens must be positive')
+    if args.min_pixels <= 0 or args.max_pixels <= 0:
+        raise ValueError('--min-pixels and --max-pixels must be positive')
+    if args.min_pixels > args.max_pixels:
+        raise ValueError('--min-pixels must not exceed --max-pixels')
+    if args.crop_min_side <= 28:
+        raise ValueError('--crop-min-side must be greater than 28')
+    if not 0.0 < args.grounding_accept_iou <= 1.0:
+        raise ValueError('--grounding-accept-iou must be in (0, 1]')
+    if not 0.0 < args.grounding_containment <= 1.0:
+        raise ValueError('--grounding-containment must be in (0, 1]')
+    if args.grounding_boundary_tolerance < 0:
+        raise ValueError(
+            '--grounding-boundary-tolerance must be non-negative'
+        )
+    for value, name in (
+        (args.dino_box_threshold, '--dino-box-threshold'),
+        (args.dino_text_threshold, '--dino-text-threshold'),
+    ):
+        if not 0.0 <= value <= 1.0:
+            raise ValueError(f'{name} must be in [0, 1]')
+    if args.dino_top_k_log <= 0:
+        raise ValueError('--dino-top-k-log must be positive')
+    if args.resume and args.overwrite:
+        raise ValueError('--resume and --overwrite are mutually exclusive')
+    if (
+        args.task_mode != 'routing_grounding_geometry'
+        and args.geometry_backend != 'qwen25_vl'
+    ):
+        raise ValueError(
+            '--geometry-backend only applies with '
+            '--task-mode routing_grounding_geometry'
+        )
+    if (
+        args.geometry_backend == 'grounding_dino'
+        and args.grounding_image_mode != 'raw_image'
+    ):
+        raise ValueError(
+            'Grounding DINO supports only --grounding-image-mode raw_image '
+            'so the candidate remains hidden from the localizer'
+        )
+    if args.task_mode != 'binary_alignment' and args.binary_image_mode != 'crop_only':
+        raise ValueError(
+            '--binary-image-mode only applies with --task-mode binary_alignment'
+        )
+    if (
+        args.task_mode != 'routing_four_way'
+        and args.routing_image_mode != 'bbox_image_only'
+    ):
+        raise ValueError(
+            '--routing-image-mode only applies with '
+            '--task-mode routing_four_way'
+        )
+    if (
+        args.task_mode != 'routing_grounding_geometry'
+        and args.grounding_image_mode != 'raw_image'
+    ):
+        raise ValueError(
+            '--grounding-image-mode only applies with '
+            '--task-mode routing_grounding_geometry'
+        )
+
+    output_path = layout.results_path
+    examples = load_examples(args.benchmark, args.split)
+    examples = examples[args.start_index:]
+    if args.limit is not None:
+        examples = examples[:args.limit]
+
+    existing = _read_jsonl(output_path)
+    if existing and not args.resume and not args.overwrite:
+        raise FileExistsError(
+            f'output already contains results: {output_path}; use --resume '
+            'or choose a new output path'
+        )
+    if args.overwrite:
+        existing = []
+    completed_ids = {str(row.get('event_id')) for row in existing}
+    pending = [
+        example for example in examples
+        if example.event_id not in completed_ids
+    ]
+
+    layout.ensure_run_directories()
+    write_run_config(layout, {
+        'command': list(sys.argv),
+        'arguments': _jsonable_arguments(args),
+        'inputs': {
+            'benchmark': str(args.benchmark),
+        },
+        'components': {
+            'task_mode': args.task_mode,
+            'geometry_backend': args.geometry_backend,
+            'model': str(args.model_path),
+        },
+        'resolved_output': str(output_path),
+    })
+    write_run_status(
+        layout,
+        'running',
+        selected_examples=len(examples),
+        pending_examples=len(pending),
+        resumed_records=len(existing),
+    )
+    lifecycle['started'] = True
+    print(f'Run id: {layout.run_id}; output: {output_path}', flush=True)
+
+    backend = None
+    geometry_classifier = None
+    if (
+        args.task_mode == 'routing_grounding_geometry'
+        and args.geometry_backend == 'grounding_dino'
+    ):
+        dino_runner = LocalGroundingDinoRunner(
+            model_path=str(args.model_path),
+            device=args.device,
+            dtype=args.dino_dtype,
+            box_threshold=args.dino_box_threshold,
+            text_threshold=args.dino_text_threshold,
+        )
+        geometry_classifier = GroundingDinoGeometryClassifier(
+            runner=dino_runner,
+            accept_iou_threshold=args.grounding_accept_iou,
+            containment_threshold=args.grounding_containment,
+            top_k_log=args.dino_top_k_log,
+        )
+    else:
+        runner = LocalQwen25VLRunner(
+            model_path=str(args.model_path),
+            device=args.device,
+            dtype=args.dtype,
+            max_new_tokens=args.max_new_tokens,
+            min_pixels=args.min_pixels,
+            max_pixels=args.max_pixels,
+            attn_implementation=args.attn_implementation,
+        )
+        backend = Qwen25VLVerifierBackend(
+            runner=runner,
+            crop_min_side=args.crop_min_side,
+            parse_fail_open=True,
+        )
+        if args.task_mode == 'routing_grounding_geometry':
+            geometry_classifier = Qwen25VLGroundingGeometryClassifier(
+                runner=runner,
+                accept_iou_threshold=args.grounding_accept_iou,
+                containment_threshold=args.grounding_containment,
+                boundary_tolerance_pixels=args.grounding_boundary_tolerance,
+                prompt_protocol=args.grounding_prompt_protocol,
+            )
+
+    output_mode = 'a' if existing else 'w'
+    with output_path.open(output_mode, encoding='utf-8') as handle:
+        for example in _progress(pending, len(pending)):
+            try:
+                if args.task_mode == 'routing_grounding_geometry':
+                    assert geometry_classifier is not None
+                    action_input = (
+                        example.to_geometry_verification_input()
+                        if args.geometry_backend == 'grounding_dino'
+                        else example.to_grounding_action_input()
+                    )
+                    output = geometry_classifier.classify_action(
+                        action_input,
+                        image_mode=args.grounding_image_mode,
+                    )
+                    record = _routing_action_result_record(
+                        example,
+                        output,
+                    )
+                else:
+                    candidate = example.to_candidate_input()
+                    assert backend is not None
+                    if args.task_mode == 'binary_alignment':
+                        lookup = backend.verify_binary_alignment_candidate(
+                            candidate,
+                            image_mode=args.binary_image_mode,
+                        )
+                        record = _binary_result_record(
+                            example,
+                            candidate.candidate_bbox,
+                            lookup,
+                        )
+                    elif args.task_mode == 'routing_four_way':
+                        lookup = backend.classify_routing_candidate(
+                            candidate,
+                            image_mode=args.routing_image_mode,
+                        )
+                        record = _routing_result_record(
+                            example,
+                            candidate.candidate_bbox,
+                            lookup,
+                        )
+                    else:
+                        raise AssertionError(
+                            f'unhandled task mode: {args.task_mode}'
+                        )
+            except Exception as error:
+                if args.fail_fast:
+                    raise
+                record = {
+                    'event_id': example.event_id,
+                    'sample_index': example.sample_index,
+                    'split': example.split,
+                    'image_id': example.image_id,
+                    'source_image': str(example.source_image),
+                    'object_reference': example.object_reference,
+                    'candidate_box_pixel_xyxy': list(
+                        example.candidate_box_pixel_xyxy
+                    ),
+                    'candidate_box_padded_normalized_xyxy': None,
+                    'expected_status': example.expected_status,
+                    'expected_verdict': example.expected_verdict,
+                    'expected_reason': example.expected_reason,
+                    'expected_routing_status': (
+                        CONTROLLED_STATUS_TO_ROUTING_ACTION[
+                            example.expected_status
+                        ]
+                        if args.task_mode in ROUTING_TASK_MODES
+                        else None
+                    ),
+                    'expected_alignment': (
+                        example.expected_status == 'aligned'
+                        if args.task_mode == 'binary_alignment'
+                        else None
+                    ),
+                    'predicted_alignment': None,
+                    'predicted_routing_status': None,
+                    'confidence': None,
+                    'predicted_action': None,
+                    'action_probabilities': None,
+                    'action_confidence': 0.0,
+                    'verifier_abstained': True,
+                    'action_error': f'{type(error).__name__}: {error}',
+                    'correct': False,
+                    'parse_failed': False,
+                    'error': f'{type(error).__name__}: {error}',
+                    'verifier_metadata': {},
+                }
+            handle.write(json.dumps(record, ensure_ascii=False) + '\n')
+            handle.flush()
+            if args.verbose:
+                predicted = (
+                    record.get('predicted_alignment')
+                    if args.task_mode == 'binary_alignment'
+                    else record.get('predicted_routing_status')
+                )
+                expected = (
+                    record.get('expected_routing_status')
+                    if args.task_mode in ROUTING_TASK_MODES
+                    else record.get('expected_alignment')
+                )
+                print(
+                    f"[{example.event_id}] expected={expected} "
+                    f"predicted={predicted} "
+                    f"confidence={record['confidence']} "
+                    f"correct={record['correct']}",
+                    flush=True,
+                )
+                raw_response = record['verifier_metadata'].get('raw_response')
+                if raw_response is not None:
+                    print(f'  raw: {raw_response}', flush=True)
+
+    results = _read_jsonl(output_path)
+    selected_ids = {example.event_id for example in examples}
+    selected_results = [
+        record for record in results
+        if str(record.get('event_id')) in selected_ids
+    ]
+    is_dino_geometry = (
+        args.task_mode == 'routing_grounding_geometry'
+        and args.geometry_backend == 'grounding_dino'
+    )
+    selected_image_mode = (
+        args.binary_image_mode
+        if args.task_mode == 'binary_alignment'
+        else (
+            args.grounding_image_mode
+            if args.task_mode == 'routing_grounding_geometry'
+            else args.routing_image_mode
+        )
+    )
+    model_images_by_mode = {
+        'raw_image': 'clean source image with candidate bbox supplied as text',
+        'bbox_image': (
+            'source image with red candidate rectangle and the same bbox '
+            'supplied as text'
+        ),
+        'crop_only': 'border-free crop from inside the candidate rectangle',
+        'bbox_image_only': 'marked full scene only',
+        'marked_plus_crop': (
+            'marked full scene followed by border-free candidate crop'
+        ),
+    }
+    if args.task_mode == 'routing_grounding_geometry':
+        if is_dino_geometry:
+            model_image_description = (
+                'clean source image and object reference only; candidate '
+                'coordinates are hidden from Grounding DINO'
+            )
+        else:
+            model_image_description = (
+                'clean source image; candidate coordinates are hidden from '
+                'Qwen'
+                if selected_image_mode == 'raw_image'
+                else (
+                    'source image with red candidate rectangle; candidate '
+                    'coordinates are hidden from Qwen'
+                )
+            )
+    else:
+        model_image_description = model_images_by_mode[selected_image_mode]
+    if is_dino_geometry:
+        dino_metadata = [
+            record.get('verifier_metadata', {})
+            for record in selected_results
+        ]
+        detection_counts = [
+            metadata.get('detection_count')
+            for metadata in dino_metadata
+            if isinstance(metadata.get('detection_count'), int)
+        ]
+        total_latencies = [
+            metadata.get('timing_ms', {}).get('total')
+            for metadata in dino_metadata
+            if isinstance(metadata.get('timing_ms'), dict)
+            and isinstance(
+                metadata.get('timing_ms', {}).get('total'),
+                (int, float),
+            )
+        ]
+        dino_diagnostics = {
+            'localization_failure_count': sum(
+                bool(metadata.get('localization_failed'))
+                for metadata in dino_metadata
+            ),
+            'mean_detection_count': (
+                sum(detection_counts) / len(detection_counts)
+                if detection_counts else None
+            ),
+            'mean_latency_ms': (
+                sum(total_latencies) / len(total_latencies)
+                if total_latencies else None
+            ),
+            'p50_latency_ms': _percentile(total_latencies, 0.5),
+            'p95_latency_ms': _percentile(total_latencies, 0.95),
+        }
+    else:
+        dino_diagnostics = None
+    backend_name = {
+        'binary_alignment': (
+            f'qwen25_vl_binary_alignment_{args.binary_image_mode}'
+        ),
+        'routing_four_way': (
+            f'qwen25_vl_routing_four_way_{args.routing_image_mode}'
+        ),
+        'routing_grounding_geometry': (
+            (
+                'grounding_dino_geometry_router_raw_image'
+                if is_dino_geometry
+                else (
+                    'qwen25_vl_grounding_geometry_router_'
+                    f'{args.grounding_image_mode}'
+                )
+            )
+        ),
+    }[args.task_mode]
+    summary = {
+        'benchmark': str(args.benchmark),
+        'run_id': layout.run_id,
+        'run_layout': layout.layout_kind,
+        'model_path': str(args.model_path),
+        'backend': backend_name,
+        'task_mode': args.task_mode,
+        'geometry_backend': (
+            args.geometry_backend
+            if args.task_mode == 'routing_grounding_geometry'
+            else None
+        ),
+        'binary_image_mode': (
+            args.binary_image_mode
+            if args.task_mode == 'binary_alignment'
+            else None
+        ),
+        'routing_image_mode': (
+            args.routing_image_mode
+            if args.task_mode == 'routing_four_way'
+            else None
+        ),
+        'grounding_image_mode': (
+            args.grounding_image_mode
+            if args.task_mode == 'routing_grounding_geometry'
+            else None
+        ),
+        'grounding_accept_iou': (
+            args.grounding_accept_iou
+            if args.task_mode == 'routing_grounding_geometry'
+            else None
+        ),
+        'grounding_containment': (
+            args.grounding_containment
+            if args.task_mode == 'routing_grounding_geometry'
+            else None
+        ),
+        'grounding_boundary_tolerance_pixels': (
+            args.grounding_boundary_tolerance
+            if (
+                args.task_mode == 'routing_grounding_geometry'
+                and not is_dino_geometry
+            )
+            else None
+        ),
+        'grounding_prompt_protocol': (
+            args.grounding_prompt_protocol
+            if (
+                args.task_mode == 'routing_grounding_geometry'
+                and not is_dino_geometry
+            )
+            else None
+        ),
+        'dino_box_threshold': (
+            args.dino_box_threshold if is_dino_geometry else None
+        ),
+        'dino_text_threshold': (
+            args.dino_text_threshold if is_dino_geometry else None
+        ),
+        'dino_dtype': args.dino_dtype if is_dino_geometry else None,
+        'dino_top_k_log': (
+            args.dino_top_k_log if is_dino_geometry else None
+        ),
+        'dino_selection_policy': (
+            'highest_detector_score_candidate_hidden'
+            if is_dino_geometry else None
+        ),
+        'dino_diagnostics': dino_diagnostics,
+        'split': args.split,
+        'start_index': args.start_index,
+        'limit': args.limit,
+        'min_pixels_per_image': (
+            None if is_dino_geometry else args.min_pixels
+        ),
+        'max_pixels_per_image': (
+            None if is_dino_geometry else args.max_pixels
+        ),
+        'crop_min_side': None if is_dino_geometry else args.crop_min_side,
+        'selected_example_count': len(examples),
+        'completed_result_count': len(selected_results),
+        'input_protocol': {
+            'source_fields': [
+                'source_image',
+                'object_reference',
+                'candidate_box_pixel_xyxy',
+            ],
+            'coordinate_conversion': (
+                (
+                    'candidate and post-processed grounding box are compared '
+                    'directly as original-image absolute pixel xyxy; no Qwen '
+                    'resize or VoCoT padding conversion'
+                )
+                if is_dino_geometry
+                else (
+                    (
+                        'original-image pixel xyxy and clean image are jointly '
+                        'scaled to the exact Qwen smart-resized image frame'
+                    )
+                    if args.task_mode == 'routing_grounding_geometry'
+                    else (
+                        'original-image pixel xyxy to normalized xyxy on '
+                        'VoCoT center-padded square'
+                    )
+                )
+            ),
+            'image_mode': selected_image_mode,
+            'model_images': [model_image_description],
+            'detector_visible_fields': (
+                ['source_image', 'object_reference']
+                if is_dino_geometry else None
+            ),
+            'supervision_not_visible_to_model': [
+                'target_box_pixel_xyxy',
+                'target_box_normalized_xyxy',
+                'candidate_target_geometry',
+                'verdict',
+                'reason',
+                'construction',
+            ],
+        },
+        'metrics': (
+            compute_binary_alignment_metrics(selected_results)
+            if args.task_mode == 'binary_alignment'
+            else compute_routing_metrics(selected_results)
+        ),
+    }
+    summary_path = benchmark_summary_path(layout)
+    with summary_path.open('w', encoding='utf-8') as handle:
+        json.dump(summary, handle, ensure_ascii=False, indent=2)
+        handle.write('\n')
+
+    metrics = summary['metrics']
+    error_count = sum(
+        record.get('error') is not None for record in selected_results
+    )
+    write_run_status(
+        layout,
+        'completed' if error_count == 0 else 'completed_with_errors',
+        selected_examples=len(examples),
+        completed_records=len(selected_results),
+        error_records=error_count,
+        results_path=str(output_path),
+        summary_path=str(summary_path),
+    )
+    print(f'Results: {output_path}')
+    print(f'Summary: {summary_path}')
+    if args.task_mode == 'binary_alignment':
+        print(
+            'Binary alignment accuracy: '
+            f"{metrics['end_to_end_accuracy'] * 100:.2f}% "
+            f"({metrics['correct']}/{metrics['total']})"
+        )
+        print(f"Misalignment recall: {metrics['recall'] * 100:.2f}%")
+    else:
+        print(
+            'Routing four-way accuracy: '
+            f"{metrics['four_way']['accuracy'] * 100:.2f}% "
+            f"({metrics['four_way']['correct']}/{metrics['total']})"
+        )
+        print(
+            'Macro-F1: '
+            f"{metrics['four_way']['macro_f1'] * 100:.2f}%"
+        )
+    print(
+        'Parse success rate: '
+        f"{metrics['parse_success_rate'] * 100:.2f}%"
+    )
+
+
+def main() -> None:
+    args = parse_args()
+    layout = resolve_benchmark_run_layout(args)
+    lifecycle = {'started': False}
+    try:
+        _run_evaluation(args, layout, lifecycle)
+    except BaseException as error:
+        if lifecycle['started']:
+            try:
+                write_run_status(
+                    layout,
+                    'failed',
+                    error_type=type(error).__name__,
+                    error=str(error)[:2000],
+                )
+            except Exception:
+                # Never mask the evaluator's original failure with a metadata
+                # write error during cleanup.
+                pass
+        raise
+
+
+if __name__ == '__main__':
+    main()

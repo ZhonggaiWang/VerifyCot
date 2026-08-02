@@ -11,6 +11,13 @@ With the prepared datasets, please set the correct paths in those [config files]
 
 We provide the evaluation scripts in [test_all_benchmark.sh](./commands/test_all_benchmark.sh), you can modify the model path and run the entire script or use a part of it.
 
+This is the original VoCoT benchmark pipeline. Its distributed rank files and
+metric scripts share the explicit legacy `--output_dir` layout, which is kept
+unchanged for reproducibility. New grounding-control experiments
+use the canonical run layout documented in
+[Oracle_experiment/README.md](./Oracle_experiment/README.md) and
+[output/README.md](../output/README.md).
+
 ## Metric Computation
 
 Similar to the evaluation, all the metrics can be computed offline with [run_metric.sh](./commands/run_metric.sh). For GQA and AMBER, the output is converted into appropriate format. You need to further compute the metric, please refer to [LLaVA_for_GQA](https://github.com/haotian-liu/LLaVA/blob/main/docs/Evaluation.md#gqa) and [AMBER](https://github.com/junyangwang0410/AMBER) for further instruction.

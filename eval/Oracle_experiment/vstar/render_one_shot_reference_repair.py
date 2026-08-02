@@ -9,7 +9,7 @@ be inspected spatially rather than only through aggregate IoU.
 Typical use::
 
     python eval/Oracle_experiment/vstar/render_one_shot_reference_repair.py \
-      --results output/vstar/one_shot_reference_repair/text_only_sandbox/typed_feedback/20260728_113623/results.jsonl \
+      --results output/vstar/one_shot_reference_repair/with_coor_no_bind_feature/concise_typed_feedback/20260728_132120/results.jsonl \
       --manifest output/vstar/one_shot_reference_repair/full_238_padding_fix/manifest.jsonl \
       --sample-id main:6 \
       --dataset-root /data/zhonggai/VStar \
@@ -257,10 +257,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--results',
         default=(
-            'output/vstar/one_shot_reference_repair/text_only_sandbox/'
-            'concise_typed_feedback/20260728_113623/results.jsonl'
+            'output/vstar/one_shot_reference_repair/with_coor_no_bind_feature/'
+            'concise_typed_feedback/20260728_132120/results.jsonl'
         ),
-        help='One-shot repair results JSONL (or one JSON record). Defaults to text-only concise feedback.',
+        help=(
+            'One-shot repair results JSONL (or one JSON record). Defaults to '
+            'concise feedback with q text retained and only V(q) suppressed.'
+        ),
     )
     parser.add_argument(
         '--manifest',

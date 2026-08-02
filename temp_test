@@ -10,7 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 GPU_LIST=""
-SANDBOX_REFBIND_MODE="text_only"
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+SANDBOX_REFBIND_MODE="skip_q_refbind"
 MAX_SAMPLES=""
 MODEL_PATH="weights/Volcano-7b"
 MANIFEST="output/vstar/one_shot_reference_repair/full_238_padding_fix/manifest.jsonl"
@@ -19,6 +20,7 @@ IMAGE_DIR="/data/zhonggai/VStar"
 MAX_NEW_TOKENS=2048
 TEMPERATURE=0.0
 PYTHON_BIN="/home/zhonggai/miniconda3/envs/vocot/bin/python"
+OUTPUT_ROOT="output/vstar/runs/full_238_matchable_198/repair/one_shot"
 
 usage() {
     cat <<'EOF'
@@ -31,8 +33,10 @@ Runs one VStar test for each repair prompt:
 Options:
   --gpus LIST                    Required CUDA devices, e.g. 6 or 4,6.
                                  Two or more cards run the two settings in parallel.
-  --sandbox-refbind-mode MODE    bind | text_only | skip_q_refbind
-                                 (default: text_only).
+  --run-id ID                    Shared run id (default: timestamp).
+  --output-root PATH             Canonical repair root for the matchable-198 subset.
+  --sandbox-refbind-mode MODE    bind | skip_q_refbind
+                                 (default: skip_q_refbind).
   --max-samples N                Optional quick-run limit.
   --model-path PATH              Default: weights/Volcano-7b.
   --max-new-tokens N             Default: 2048.
@@ -45,6 +49,14 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --gpus)
             GPU_LIST="$2"
+            shift 2
+            ;;
+        --run-id)
+            RUN_ID="$2"
+            shift 2
+            ;;
+        --output-root)
+            OUTPUT_ROOT="$2"
             shift 2
             ;;
         --sandbox-refbind-mode)
@@ -84,8 +96,8 @@ if [[ -z "$GPU_LIST" ]]; then
     usage >&2
     exit 2
 fi
-if [[ "$SANDBOX_REFBIND_MODE" != "bind" && "$SANDBOX_REFBIND_MODE" != "text_only" && "$SANDBOX_REFBIND_MODE" != "skip_q_refbind" ]]; then
-    echo "--sandbox-refbind-mode must be bind, text_only, or skip_q_refbind." >&2
+if [[ "$SANDBOX_REFBIND_MODE" != "bind" && "$SANDBOX_REFBIND_MODE" != "skip_q_refbind" ]]; then
+    echo "--sandbox-refbind-mode must be bind or skip_q_refbind." >&2
     exit 2
 fi
 
@@ -113,15 +125,18 @@ fi
 run_setting() {
     local gpu="$1"
     local repair_mode="$2"
-    local output_path="output/vstar/one_shot_reference_repair/temp_test/${repair_mode}/results.jsonl"
+    local setting="${repair_mode}__${SANDBOX_REFBIND_MODE}"
+    local output_path="$OUTPUT_ROOT/$setting/results.jsonl"
     echo "[$repair_mode] CUDA_VISIBLE_DEVICES=$gpu; sandbox_refbind_mode=$SANDBOX_REFBIND_MODE"
     CUDA_VISIBLE_DEVICES="$gpu" "$PYTHON_BIN" -u "${COMMON_ARGS[@]}" \
         --repair-mode "$repair_mode" \
+        --run-id "$RUN_ID" \
         --output "$output_path"
 }
 
 echo "Temporary paired test: typed_feedback vs concise_typed_feedback"
 echo "GPUs: $GPU_LIST"
+echo "Run id: $RUN_ID"
 
 if [[ ${#GPUS[@]} -ge 2 ]]; then
     run_setting "${GPUS[0]}" typed_feedback &
@@ -135,4 +150,4 @@ else
     run_setting "${GPUS[0]}" concise_typed_feedback
 fi
 
-echo "Finished. Results are under output/vstar/one_shot_reference_repair/temp_test/."
+echo "Finished. Results are under $OUTPUT_ROOT/*/$RUN_ID/."

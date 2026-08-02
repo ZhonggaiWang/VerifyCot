@@ -23,15 +23,17 @@ from utils.coordinate_intervention import (
     make_same_shape_perturbation,
 )
 from utils.eval_util import extract_all_box_str
-from verifier import (
+from grounding_control import (
     OracleGrounderBackend,
-    OracleIoUVerifierBackend,
-    RoutingController,
-    VerificationResult,
+    OracleTargetResolver,
+    PrecommitGroundingController,
 )
-from verifier.legacy import (
+from grounding_control.core import (
+    AlignmentRoutingPolicy,
+    AlignmentScoreCalibrator,
+)
+from grounding_control.legacy import (
     LegacyRepairController,
-    SingleCandidateOracleVerifier,
     StoredOracleVerifier,
 )
 from model.language_model.volcano_llama import VolCanoLlamaForCausalLM,VolCanoConfig
@@ -329,9 +331,9 @@ def one_shot_reference_repair_infer(
     """
     if oracle_file is None:
         raise ValueError('oracle_file is required for one_shot_reference_repair_infer')
-    if sandbox_refbind_mode not in {'bind', 'text_only', 'skip_q_refbind'}:
+    if sandbox_refbind_mode not in {'bind', 'skip_q_refbind'}:
         raise ValueError(
-            "sandbox_refbind_mode must be 'bind', 'text_only', or 'skip_q_refbind'"
+            "sandbox_refbind_mode must be 'bind' or 'skip_q_refbind'"
         )
 
     def batch_factory():
@@ -358,8 +360,6 @@ def one_shot_reference_repair_infer(
         max_new_tokens=max_new_tokens,
         temperature=temperature,
     )
-    if sandbox_refbind_mode == 'text_only':
-        return controller.run_one_shot_reference_repair_text_only_q(**run_kwargs)
     return controller.run_one_shot_reference_repair(
         suppress_refbind_for_random_box=(sandbox_refbind_mode == 'skip_q_refbind'),
         **run_kwargs,
@@ -386,96 +386,6 @@ def one_shot_reference_corruption_infer(
     return controller.run_one_shot_reference_corruption(
         reference_generated_ids, selected_coordinate_index, random_box,
         max_new_tokens=max_new_tokens, temperature=temperature,
-    )
-
-
-def one_shot_reference_repair_text_only_q_infer(
-        model, preprocessor, image, query, reference_generated_ids,
-        selected_coordinate_index, random_box, cot=True, sample_id=None,
-        oracle_file=None, max_new_tokens=1024, temperature=0.0,
-        repair_mode='separated_reference_feedback', accept_confidence=0.8,
-        log_path=None, conversation=None, options=None):
-    """Separate one-shot repair control where q has no sandbox REFbind feature.
-
-    The original ``one_shot_reference_repair_infer`` remains untouched.  This
-    entry point renders q as ordinary numeric feedback, while retaining normal
-    REFbind for all completed H_t coordinates and for the committed r.
-    """
-    return one_shot_reference_repair_infer(
-        model=model,
-        preprocessor=preprocessor,
-        image=image,
-        query=query,
-        reference_generated_ids=reference_generated_ids,
-        selected_coordinate_index=selected_coordinate_index,
-        random_box=random_box,
-        cot=cot,
-        sample_id=sample_id,
-        oracle_file=oracle_file,
-        max_new_tokens=max_new_tokens,
-        temperature=temperature,
-        repair_mode=repair_mode,
-        accept_confidence=accept_confidence,
-        log_path=log_path,
-        conversation=conversation,
-        options=options,
-        sandbox_refbind_mode='text_only',
-    )
-
-
-def one_shot_natural_error_repair_infer(
-        model, preprocessor, image, query, baseline_generated_ids,
-        selected_coordinate_index, baseline_box, oracle_target_box, target_object,
-        cot=True, sample_id=None, max_new_tokens=1024, temperature=0.0,
-        repair_mode='concise_typed_feedback', accept_confidence=0.8,
-        log_path=None, conversation=None, options=None):
-    """Repair one GT-audited natural baseline error with text-only feedback.
-
-    The oracle GT box is retained only for evaluation diagnostics.  It is
-    never included in the repair prompt.  The model receives only the fixed
-    ``misaligned/wrong_object`` checker output and the rejected baseline box
-    rendered as ordinary text, so q has no temporary REFbind feature.
-    """
-    if repair_mode != 'concise_typed_feedback':
-        raise ValueError(
-            'natural-error experiment currently requires concise_typed_feedback'
-        )
-    if sample_id is None:
-        raise ValueError('sample_id is required')
-
-    def batch_factory():
-        return _build_inference_batch(
-            preprocessor, image, query, cot, conversation=conversation, options=options
-        )
-
-    verifier = SingleCandidateOracleVerifier(
-        sample_id=str(sample_id),
-        grounding_step=int(selected_coordinate_index),
-        candidate_bbox=baseline_box,
-        result=VerificationResult(
-            verdict='misaligned', reason='wrong_object', confidence=1.0
-        ),
-    )
-    controller = LegacyRepairController(
-        model=model,
-        tokenizer=preprocessor.tokenizer,
-        batch_factory=batch_factory,
-        verifier=verifier,
-        sample_id=str(sample_id),
-        repair_mode=repair_mode,
-        accept_confidence=accept_confidence,
-        max_retries=0,
-        on_failure='abort_sample',
-        log_path=log_path,
-    )
-    return controller.run_one_shot_natural_error_repair_text_only_q(
-        reference_generated_ids=baseline_generated_ids,
-        selected_coordinate_index=selected_coordinate_index,
-        baseline_box=baseline_box,
-        oracle_target_box=oracle_target_box,
-        target_object=target_object,
-        max_new_tokens=max_new_tokens,
-        temperature=temperature,
     )
 
 
@@ -780,21 +690,24 @@ def routing_infer(
         model, preprocessor, image, verifier_backend, grounder_backend,
         query=None, cot=True, sample_id=None, max_new_tokens=1024,
         temperature=0.0, conversation=None, options=None, log_path=None,
-        verifier_confidence_threshold=0.8, sample_context=None):
-    """Run generic verifier--grounder routing and validate every committed box.
+        verifier_confidence_threshold=0.8, sample_context=None,
+        box_refiner_backend=None, routing_policy=None,
+        alignment_routing_policy=None,
+        missing_expert_policy='fail_open'):
+    """Run verifier--expert routing and validate every committed box.
 
     Backend construction and experiment-specific summary fields deliberately
     live outside this function.  This path owns only the shared inference
     mechanics: fresh batch construction, coordinate routing, and the strict
     equality check among coordinate text, the controller's committed box, and
-    Volcano's recorded REFbind box.
+    Volcano's recorded REFbind box. ``grounder_backend`` may be ``None`` for
+    verifier-only or refiner-only runs; missing routed experts follow
+    ``missing_expert_policy``.
     """
     if sample_id is None:
         raise ValueError('sample_id is required for routing_infer')
     if verifier_backend is None:
         raise ValueError('verifier_backend is required for routing_infer')
-    if grounder_backend is None:
-        raise ValueError('grounder_backend is required for routing_infer')
 
     def batch_factory():
         return _build_inference_batch(
@@ -809,17 +722,45 @@ def routing_infer(
         'coordinate_system',
         'normalized_xyxy_on_center_padded_square',
     )
-    controller = RoutingController(
-        model=model,
-        tokenizer=preprocessor.tokenizer,
-        batch_factory=batch_factory,
-        verifier=verifier_backend,
-        grounder=grounder_backend,
-        sample_id=str(sample_id),
-        verifier_confidence_threshold=verifier_confidence_threshold,
-        log_path=log_path,
-        sample_context=routing_context,
-    )
+    if alignment_routing_policy is not None:
+        if routing_policy is not None or box_refiner_backend is not None:
+            raise ValueError(
+                'binary alignment routing does not accept four-way routing '
+                'policy or BoxRefiner backends'
+            )
+        controller = PrecommitGroundingController(
+            model=model,
+            tokenizer=preprocessor.tokenizer,
+            batch_factory=batch_factory,
+            verifier=verifier_backend,
+            grounder=grounder_backend,
+            alignment_routing_policy=alignment_routing_policy,
+            missing_expert_policy=missing_expert_policy,
+            sample_id=str(sample_id),
+            log_path=log_path,
+            sample_context=routing_context,
+        )
+    else:
+        # Four-action routing is an explicit appendix path. Keep the import
+        # lazy so ordinary model loading and binary alignment inference do not
+        # pull the archived stack into the mainline process.
+        from grounding_control.four_way import (
+            FourWayPrecommitGroundingController,
+        )
+        controller = FourWayPrecommitGroundingController(
+            model=model,
+            tokenizer=preprocessor.tokenizer,
+            batch_factory=batch_factory,
+            verifier=verifier_backend,
+            grounder=grounder_backend,
+            box_refiner=box_refiner_backend,
+            routing_policy=routing_policy,
+            missing_expert_policy=missing_expert_policy,
+            sample_id=str(sample_id),
+            verifier_confidence_threshold=verifier_confidence_threshold,
+            log_path=log_path,
+            sample_context=routing_context,
+        )
     controller_result = controller.run(
         max_new_tokens=max_new_tokens,
         temperature=temperature,
@@ -844,12 +785,64 @@ def routing_infer(
             )
 
     events = controller_result.events
-    if len(events) != len(boxes):
-        raise RuntimeError(
-            f'routing inference recorded {len(events)} decisions for '
-            f'{len(boxes)} coordinates'
+    committed_events = []
+    uncommitted_events = []
+    for event_index, event in enumerate(events):
+        coordinate_committed = event.get('coordinate_committed', True)
+        if not isinstance(coordinate_committed, bool):
+            raise RuntimeError(
+                'routing inference event coordinate_committed must be a '
+                f'boolean at event {event_index + 1}'
+            )
+        if coordinate_committed:
+            committed_events.append(event)
+        else:
+            uncommitted_events.append((event_index, event))
+
+    if uncommitted_events:
+        if (
+            controller_result.status != 'routing_abstained'
+            or len(uncommitted_events) != 1
+            or uncommitted_events[0][0] != len(events) - 1
+        ):
+            raise RuntimeError(
+                'routing inference permits exactly one uncommitted event, '
+                'only as the final routing_abstained decision'
+            )
+        _, terminal_event = uncommitted_events[0]
+        if (
+            terminal_event.get('verifier_output_schema')
+            != 'vocot_four_action_v1'
+            or terminal_event.get('routing_decision') != 'abstain'
+            or terminal_event.get('router_action') != 'routing_abstained'
+            or terminal_event.get('terminal_uncommitted') is not True
+            or terminal_event.get('candidate_refbind_uncommitted') is not True
+            or terminal_event.get('candidate_committed') is not False
+            or terminal_event.get('committed_box') is not None
+            or terminal_event.get('committed_coordinate_text') is not None
+            or terminal_event.get(
+                'committed_feature_will_be_injected_on_clean_replay'
+            ) is not False
+        ):
+            raise RuntimeError(
+                'terminal routing_abstained event has inconsistent '
+                'uncommitted-coordinate metadata'
+            )
+        terminal_event['verification'] = (
+            'candidate_uncommitted_before_refbind'
         )
-    for coordinate_index, (event, text_box) in enumerate(zip(events, boxes), 1):
+    elif controller_result.status == 'routing_abstained':
+        raise RuntimeError(
+            'routing_abstained result requires one terminal uncommitted event'
+        )
+
+    if len(committed_events) != len(boxes):
+        raise RuntimeError(
+            f'routing inference recorded {len(committed_events)} committed '
+            f'decisions for {len(boxes)} coordinates'
+        )
+    for coordinate_index, (event, text_box) in enumerate(
+            zip(committed_events, boxes), 1):
         committed_box = event['committed_box']
         if committed_box is None or not _boxes_match(text_box, committed_box):
             raise RuntimeError(
@@ -877,6 +870,65 @@ def routing_infer(
     }
 
 
+def alignment_routing_infer(
+        model, preprocessor, image, verifier_backend, grounder_backend,
+        reject_threshold, accept_threshold, query=None, cot=True,
+        sample_id=None, max_new_tokens=1024, temperature=0.0,
+        conversation=None, options=None, log_path=None,
+        sample_context=None, missing_expert_policy='fail_open',
+        alignment_score_kind='calibrated_probability',
+        alignment_calibrator: Optional[AlignmentScoreCalibrator] = None):
+    """Run the binary alignment verifier with fixed first-version routing.
+
+    Scores at or above ``accept_threshold`` accept the model candidate.
+    Scores at or below ``reject_threshold`` call the Grounder.  The open
+    interval between the thresholds is retained as an auditable
+    ``uncertain`` band and, in this first version, also calls the Grounder.
+    Verifier abstention/failure fails open through
+    :class:`AlignmentRoutingPolicy`; unavailable experts follow
+    ``missing_expert_policy``.
+
+    The wrapper deliberately reuses :func:`routing_infer`, including its
+    coordinate-text/committed-box/REFbind equality checks.
+    """
+
+    if alignment_score_kind == 'calibrated_probability':
+        policy = AlignmentRoutingPolicy(
+            reject_threshold=reject_threshold,
+            accept_threshold=accept_threshold,
+            calibrator=alignment_calibrator,
+        )
+    else:
+        if alignment_calibrator is not None:
+            raise ValueError(
+                'alignment_calibrator requires '
+                'alignment_score_kind="calibrated_probability"'
+            )
+        policy = AlignmentRoutingPolicy.explicit_raw(
+            reject_threshold=reject_threshold,
+            accept_threshold=accept_threshold,
+            score_kind=alignment_score_kind,
+        )
+    return routing_infer(
+        model=model,
+        preprocessor=preprocessor,
+        image=image,
+        verifier_backend=verifier_backend,
+        grounder_backend=grounder_backend,
+        query=query,
+        cot=cot,
+        sample_id=sample_id,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        conversation=conversation,
+        options=options,
+        log_path=log_path,
+        sample_context=sample_context,
+        alignment_routing_policy=policy,
+        missing_expert_policy=missing_expert_policy,
+    )
+
+
 def selective_oracle_router_infer(
         model, preprocessor, image, query=None, cot=True, sample_id=None,
         oracle_targets=None, iou_threshold=0.1, max_new_tokens=1024,
@@ -890,13 +942,18 @@ def selective_oracle_router_infer(
     if not 0.0 <= float(iou_threshold) <= 1.0:
         raise ValueError('iou_threshold must be in [0, 1]')
 
-    verifier = OracleIoUVerifierBackend(
-        tokenizer=preprocessor.tokenizer,
+    from grounding_control.four_way import OracleIoUVerifierBackend
+
+    resolver = OracleTargetResolver(
+        preprocessor.tokenizer,
         oracle_targets=oracle_targets,
-        iou_threshold=iou_threshold,
         context_window_tokens=context_window_tokens,
     )
-    grounder = OracleGrounderBackend()
+    verifier = OracleIoUVerifierBackend(
+        resolver=resolver,
+        iou_threshold=iou_threshold,
+    )
+    grounder = OracleGrounderBackend(resolver)
     routed = routing_infer(
         model=model,
         preprocessor=preprocessor,

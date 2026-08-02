@@ -23,6 +23,12 @@ from tqdm import tqdm
 from constants import ALL_IMG_TOKENS_STR, COT_ACTIVATION, DEFAULT_GRD_TOKEN
 from model.load_model import load_model, online_oracle_option_infer
 from utils.coordinate_intervention import normalized_box_to_square_padding
+from grounding_control.run_paths import (
+    create_exact_output_layout,
+    create_run_layout,
+    write_run_config,
+    write_run_status,
+)
 
 
 ORACLE_BOX_COORDINATE_SYSTEM = 'normalized_xyxy_on_center_padded_square'
@@ -37,7 +43,13 @@ def parse_args():
                         help='VStar root containing image paths from test_questions.jsonl.')
     parser.add_argument('--oracle-boxes-path', required=True,
                         help='JSONL produced by audit_boxes.py.')
-    parser.add_argument('--output', required=True, help='Per-example result JSONL path.')
+    parser.add_argument(
+        '--output', default=None,
+        help='Exact results JSONL path; omit for the canonical run layout.',
+    )
+    parser.add_argument('--output-root', default='output')
+    parser.add_argument('--run-id', default=None)
+    parser.add_argument('--run-split', default='full_238')
     parser.add_argument('--max-new-tokens', type=int, default=2048)
     parser.add_argument('--temperature', type=float, default=0.0)
     parser.add_argument('--likelihood-reduction', choices=('mean', 'sum'), default='mean')
@@ -236,8 +248,45 @@ def make_summary(records, args):
 
 def main():
     args = parse_args()
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if args.output is None:
+        layout = create_run_layout(
+            dataset='vstar',
+            split=args.run_split,
+            study='oracle',
+            method='always_gt',
+            setting='default',
+            run_id=args.run_id,
+            output_root=args.output_root,
+        )
+    else:
+        requested_output = Path(args.output)
+        layout = create_exact_output_layout(
+            dataset='vstar',
+            split=args.run_split,
+            study='oracle',
+            method='always_gt',
+            setting='default',
+            run_id=args.run_id or requested_output.parent.name,
+            output=requested_output,
+        )
+    layout.ensure_run_directories()
+    output_path = layout.results_path
+    write_run_config(layout, {
+        'command': list(sys.argv),
+        'arguments': vars(args),
+        'inputs': {
+            'questions': args.questions_path,
+            'image_dir': args.image_dir,
+            'oracle_boxes': args.oracle_boxes_path,
+        },
+        'components': {
+            'generator': args.model_path,
+            'verifier': 'oracle_target_matcher',
+            'grounder': 'oracle_gt_box',
+        },
+        'coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
+    })
+    write_run_status(layout, 'running', completed_records=0)
     existing_records = [] if args.no_resume else load_existing_records(output_path)
     incompatible = [
         record for record in existing_records
@@ -311,10 +360,18 @@ def main():
 
     records = load_existing_records(output_path)
     summary = make_summary(records, args)
-    summary_path = output_path.with_suffix('.summary.json')
+    summary_path = layout.summary_path
     with summary_path.open('w') as handle:
         json.dump(summary, handle, ensure_ascii=False, indent=2)
         handle.write('\n')
+    error_records = summary.get('errors', 0)
+    write_run_status(
+        layout,
+        'completed' if error_records == 0 else 'completed_with_errors',
+        completed_records=summary.get('successful_records', 0),
+        error_records=error_records,
+        summary_path=str(summary_path),
+    )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     print(f'Per-example results: {output_path}')
     print(f'Summary: {summary_path}')

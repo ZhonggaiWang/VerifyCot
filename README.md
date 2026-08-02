@@ -107,6 +107,11 @@ torchrun --nproc_per_node=8 train_volcano.py --conf config/experiments/stage1_al
 ## Evaluation
 Please see [Evaluation](./eval/Evaluation.md) for details about the evaluation datasets and evaluation scripts.
 
+The grounding-control extensions use the experiment guide in
+[eval/Oracle_experiment/README.md](./eval/Oracle_experiment/README.md), the
+canonical result layout in [output/README.md](./output/README.md), and the test
+taxonomy in [tests/README.md](./tests/README.md).
+
 ## Acknowledgement
 We thank the following open-source resources which we referenced during the development of VoCoT.
 

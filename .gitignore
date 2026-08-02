@@ -36,4 +36,8 @@ dist/
 weights/
 
 
-output/
+# Experiment artifacts stay local; the layout contract and legacy index are
+# versioned so every runner shares the same directory semantics.
+output/*
+!output/README.md
+!output/LEGACY_INDEX.md

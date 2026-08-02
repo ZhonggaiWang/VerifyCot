@@ -41,6 +41,12 @@ from common import (
     generate_gqa_final_answer,
     make_gqa_conversation,
 )
+from grounding_control.run_paths import (
+    create_exact_output_layout,
+    create_run_layout,
+    write_run_config,
+    write_run_status,
+)
 
 
 ORACLE_BOX_COORDINATE_SYSTEM = 'normalized_xyxy_on_center_padded_square'
@@ -62,8 +68,15 @@ def parse_args():
     )
     parser.add_argument(
         '--output',
-        default='output/gqa/selective_oracle_router/results.jsonl',
+        default=None,
+        help=(
+            'Exact results JSONL path. Omit it to use the canonical '
+            'output/<dataset>/runs/... layout.'
+        ),
     )
+    parser.add_argument('--output-root', default='output')
+    parser.add_argument('--run-id', default=None)
+    parser.add_argument('--run-split', default='val_1000_dev')
     parser.add_argument(
         '--verifier-log',
         default=None,
@@ -400,12 +413,48 @@ def main():
             if args.start_index <= int(record['sample_index']) < end
         ]
 
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    setting = 'iou_{}'.format(str(args.iou_threshold).replace('.', 'p'))
+    if args.output is None:
+        layout = create_run_layout(
+            dataset='gqa',
+            split=args.run_split,
+            study='routing',
+            method='oracle_verifier__oracle_experts',
+            setting=setting,
+            run_id=args.run_id,
+            output_root=args.output_root,
+        )
+    else:
+        requested_output = Path(args.output)
+        layout = create_exact_output_layout(
+            dataset='gqa',
+            split=args.run_split,
+            study='routing',
+            method='oracle_verifier__oracle_experts',
+            setting=setting,
+            run_id=args.run_id or requested_output.parent.name,
+            output=requested_output,
+        )
+    layout.ensure_run_directories()
+    output_path = layout.results_path
     verifier_log_path = (
         Path(args.verifier_log)
-        if args.verifier_log else output_path.with_name('verifier_events.jsonl')
+        if args.verifier_log else layout.events_path
     )
+    write_run_config(layout, {
+        'command': list(sys.argv),
+        'arguments': vars(args),
+        'inputs': {
+            'manifest': args.manifest_path,
+            'baseline_results': args.baseline_results,
+        },
+        'components': {
+            'generator': args.model_path,
+            'verifier': 'oracle_iou_threshold',
+            'grounder': 'oracle_gt_box',
+        },
+    })
+    write_run_status(layout, 'running', completed_records=0)
     existing = (
         [] if args.no_resume or not output_path.exists()
         else read_jsonl(output_path)
@@ -531,10 +580,19 @@ def main():
 
     records = read_jsonl(output_path)
     summary = make_summary(records, args)
-    summary_path = output_path.with_suffix('.summary.json')
+    summary_path = layout.summary_path
     summary_path.write_text(
         json.dumps(summary, ensure_ascii=False, indent=2) + '\n',
         encoding='utf-8',
+    )
+    error_records = summary.get('error_records', 0)
+    write_run_status(
+        layout,
+        'completed' if error_records == 0 else 'completed_with_errors',
+        completed_records=summary.get('successful_records', 0),
+        error_records=error_records,
+        summary_path=str(summary_path),
+        events_path=str(verifier_log_path),
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     print(f'Verifier/router events: {verifier_log_path}')

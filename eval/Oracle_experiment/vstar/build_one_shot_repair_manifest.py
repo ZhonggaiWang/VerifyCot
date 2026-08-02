@@ -18,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from utils.coordinate_intervention import box_iou, make_random_box_perturbation
 from constants import ALL_IMG_TOKENS_STR, COT_ACTIVATION, DEFAULT_GRD_TOKEN
-from verifier.run_paths import resolve_run_output
+from grounding_control.run_paths import resolve_run_output
 
 
 def read_jsonl(path):

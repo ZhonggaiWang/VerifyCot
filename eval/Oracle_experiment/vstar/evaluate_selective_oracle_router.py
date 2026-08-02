@@ -32,7 +32,11 @@ from model.load_model import (
     load_model,
     selective_oracle_router_infer,
 )
-from verifier.run_paths import resolve_run_output
+from grounding_control.run_paths import (
+    create_run_layout,
+    write_run_config,
+    write_run_status,
+)
 
 
 ORACLE_BOX_COORDINATE_SYSTEM = 'normalized_xyxy_on_center_padded_square'
@@ -49,8 +53,13 @@ def parse_args():
     parser.add_argument('--image-dir', default='/data/zhonggai/VStar')
     parser.add_argument(
         '--output',
-        default='output/vstar/selective_oracle_router/results.jsonl',
+        default=None,
+        help=(
+            'Legacy output filename. Omit it to use the canonical VStar '
+            'routing run layout.'
+        ),
     )
+    parser.add_argument('--output-root', default='output')
     parser.add_argument('--run-id', default=None,
                         help='Output subdirectory; defaults to a timestamp.')
     parser.add_argument('--verifier-log', default=None,
@@ -299,12 +308,40 @@ def main():
     if args.max_samples is not None and args.max_samples <= 0:
         raise ValueError('--max-samples must be positive')
 
-    output_path, run_id = resolve_run_output(args.output, args.run_id)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    iou_setting = 'iou_' + format(args.iou_threshold, 'g').replace('.', 'p')
+    layout = create_run_layout(
+        dataset='vstar',
+        split='full_238',
+        study='routing',
+        method='oracle_verifier__oracle_experts',
+        setting=iou_setting,
+        run_id=args.run_id,
+        output=args.output,
+        output_root=args.output_root,
+    )
+    layout.ensure_run_directories()
+    output_path = layout.results_path
+    run_id = layout.run_id
     verifier_log_path = (
         Path(args.verifier_log)
-        if args.verifier_log else output_path.with_name('verifier_events.jsonl')
+        if args.verifier_log else layout.events_path
     )
+    write_run_config(layout, {
+        'command': list(sys.argv),
+        'arguments': vars(args),
+        'inputs': {
+            'baseline_results': args.baseline_results,
+            'image_dir': args.image_dir,
+        },
+        'components': {
+            'generator': args.model_path,
+            'verifier': 'oracle_iou',
+            'grounder': 'oracle',
+            'box_refiner': 'oracle',
+        },
+        'coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
+    })
+    write_run_status(layout, 'running', completed_records=0)
     existing = [] if args.no_resume or not output_path.exists() else read_jsonl(output_path)
     incompatible = [
         record for record in existing
@@ -357,7 +394,8 @@ def main():
     if pending:
         model, preprocessor = load_model(args.model_path, precision='fp16')
 
-    with output_path.open('a', encoding='utf-8') as handle:
+    output_mode = 'w' if args.no_resume else 'a'
+    with output_path.open(output_mode, encoding='utf-8') as handle:
         for source in tqdm(pending, desc='VStar selective oracle router'):
             record = {
                 key: source.get(key) for key in (
@@ -439,9 +477,17 @@ def main():
 
     records = read_jsonl(output_path)
     summary = make_summary(records, args, run_id)
-    summary_path = output_path.with_suffix('.summary.json')
+    summary_path = layout.summary_path
     summary_path.write_text(
         json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
+    )
+    write_run_status(
+        layout,
+        'completed' if summary['error_records'] == 0
+        else 'completed_with_errors',
+        completed_records=summary['successful_records'],
+        error_records=summary['error_records'],
+        summary_path=str(summary_path),
     )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     print(f'Verifier/router events: {verifier_log_path}')

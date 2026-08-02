@@ -18,7 +18,8 @@ MODEL_PATH="weights/Volcano-7b"
 MANIFEST="output/vstar/one_shot_reference_repair/full_238_padding_fix/manifest.jsonl"
 VERIFIER_OUTPUT="output/vstar/one_shot_reference_repair/full_238_padding_fix/verifier_outputs.jsonl"
 IMAGE_DIR="/data/zhonggai/VStar"
-OUTPUT_ROOT="output/vstar/one_shot_reference_repair/with_coor_no_bind_feature"
+OUTPUT_ROOT="output/vstar/runs/full_238_matchable_198/repair/one_shot"
+REPORT_ROOT="output/vstar/reports/tables/repair_ablation"
 MAX_NEW_TOKENS=2048
 TEMPERATURE=0.0
 PYTHON_BIN="/home/zhonggai/miniconda3/envs/vocot/bin/python"
@@ -45,7 +46,8 @@ Options:
   --run-id ID          Shared output run id (default: timestamp).
   --max-samples N      Optional quick-run limit for every setting.
   --model-path PATH    Default: weights/Volcano-7b.
-  --output-root PATH   Default: output/vstar/one_shot_reference_repair/with_coor_no_bind_feature.
+  --output-root PATH   Default: output/vstar/runs/full_238_matchable_198/repair/one_shot.
+  --report-root PATH   Default: output/vstar/reports/tables/repair_ablation.
   --max-new-tokens N   Default: 2048.
   --temperature VALUE  Default: 0.0.
   -h, --help           Show this message.
@@ -59,6 +61,7 @@ while [[ $# -gt 0 ]]; do
         --max-samples) MAX_SAMPLES="$2"; shift 2 ;;
         --model-path) MODEL_PATH="$2"; shift 2 ;;
         --output-root) OUTPUT_ROOT="$2"; shift 2 ;;
+        --report-root) REPORT_ROOT="$2"; shift 2 ;;
         --max-new-tokens) MAX_NEW_TOKENS="$2"; shift 2 ;;
         --temperature) TEMPERATURE="$2"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
@@ -77,9 +80,8 @@ if [[ ${#GPUS[@]} -eq 0 || -z "${GPUS[0]}" ]]; then
     exit 2
 fi
 
-SUITE_DIR="$OUTPUT_ROOT/suites/$RUN_ID"
-LOG_DIR="$SUITE_DIR/logs"
-mkdir -p "$LOG_DIR"
+SUITE_DIR="$REPORT_ROOT/$RUN_ID"
+mkdir -p "$SUITE_DIR"
 
 COMMON_ARGS=(
     eval/Oracle_experiment/vstar/evaluate_one_shot_reference_repair.py
@@ -100,8 +102,10 @@ fi
 run_setting() {
     local gpu="$1"
     local mode="$2"
-    local output_path="$OUTPUT_ROOT/$mode/results.jsonl"
-    local log_path="$LOG_DIR/$mode.log"
+    local setting="${mode}__skip_q_refbind"
+    local output_path="$OUTPUT_ROOT/$setting/results.jsonl"
+    local log_path="$OUTPUT_ROOT/$setting/$RUN_ID/run.log"
+    mkdir -p "$(dirname "$log_path")"
     echo "[$mode] GPU $gpu; strict mode: <coor>q</coor> retained, V(q) skipped"
     CUDA_VISIBLE_DEVICES="$gpu" "$PYTHON_BIN" -u "${COMMON_ARGS[@]}" \
         --repair-mode "$mode" \
@@ -134,7 +138,7 @@ done
 
 SUMMARY_PATHS=()
 for mode in "${MODES[@]}"; do
-    SUMMARY_PATHS+=("$OUTPUT_ROOT/$mode/$RUN_ID/results.summary.json")
+    SUMMARY_PATHS+=("$OUTPUT_ROOT/${mode}__skip_q_refbind/$RUN_ID/results.summary.json")
 done
 
 COMBINED_SUMMARY="$SUITE_DIR/combined_summary.json"

@@ -106,6 +106,126 @@ def _find_token_subsequence_positions(tokens: Sequence[str], needle: Sequence[st
     ]
 
 
+class ExplicitOracleTargetMatcher:
+    """Conservatively match local CoT text to one annotated object.
+
+    Matching is token based and intentionally excludes coreference.  The
+    latest explicit alias wins; aliases ending at the same position prefer
+    the longest phrase; the remaining match must identify exactly one target.
+    Shared aliases across different target instances are therefore reported
+    as ambiguous instead of making the complete sample unusable.
+    """
+
+    POLICY = 'latest_unique_longest_explicit_alias'
+
+    def __init__(
+            self,
+            oracle_targets: Sequence[Dict[str, Any]],
+            precision: int = 3):
+        if precision < 0:
+            raise ValueError('precision must be non-negative')
+        self.precision = int(precision)
+        self.targets = self._prepare_targets(oracle_targets)
+
+    def _prepare_targets(
+            self,
+            oracle_targets: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        if not isinstance(oracle_targets, (list, tuple)) or not oracle_targets:
+            raise ValueError('oracle_targets must contain at least one target')
+
+        # Exact duplicate annotations denote the same target.  Merge their
+        # aliases so duplicated source records do not create false ambiguity.
+        prepared_by_identity: Dict[Tuple[Tuple[str, ...], Box], Dict[str, Any]] = {}
+        for source_index, target in enumerate(oracle_targets):
+            if not isinstance(target, dict):
+                raise TypeError('each oracle target must be a dictionary')
+            object_name = target.get('object')
+            if not isinstance(object_name, str) or not object_name.strip():
+                raise ValueError('oracle target requires a non-empty object name')
+            normalized_object = normalize_object_reference(object_name)
+            if not normalized_object:
+                raise ValueError(
+                    f'invalid empty object name for oracle target {object_name!r}'
+                )
+            box = _validate_oracle_box(target.get('box'), self.precision)
+            identity = (normalized_object, box)
+            prepared = prepared_by_identity.get(identity)
+            if prepared is None:
+                prepared = {
+                    'target_index': len(prepared_by_identity),
+                    'source_target_indices': [source_index],
+                    'object': object_name.strip(),
+                    'box': box,
+                    'aliases': [],
+                }
+                prepared_by_identity[identity] = prepared
+            else:
+                prepared['source_target_indices'].append(source_index)
+
+            aliases = target.get('aliases')
+            if aliases is None:
+                aliases = [object_name]
+            if not isinstance(aliases, (list, tuple)) or not aliases:
+                raise ValueError(
+                    f'oracle target {object_name!r} requires at least one alias'
+                )
+            for alias in aliases:
+                normalized_alias = normalize_object_reference(alias)
+                if not normalized_alias:
+                    raise ValueError(
+                        f'invalid empty alias for oracle target {object_name!r}'
+                    )
+                if normalized_alias not in prepared['aliases']:
+                    prepared['aliases'].append(normalized_alias)
+
+        return list(prepared_by_identity.values())
+
+    def match(
+            self,
+            context_tokens: Sequence[str]) -> Tuple[Any, str]:
+        """Return one target match or a conservative non-match reason."""
+
+        candidates = []
+        for target in self.targets:
+            for alias in target['aliases']:
+                for start in _find_token_subsequence_positions(
+                        context_tokens, alias):
+                    candidates.append({
+                        'target_index': target['target_index'],
+                        'source_target_indices': list(
+                            target['source_target_indices']
+                        ),
+                        'object': target['object'],
+                        'box': target['box'],
+                        'alias_tokens': alias,
+                        'start': start,
+                        'end': start + len(alias),
+                    })
+        if not candidates:
+            return None, 'no_explicit_target_alias'
+
+        latest_end = max(candidate['end'] for candidate in candidates)
+        latest = [
+            candidate for candidate in candidates
+            if candidate['end'] == latest_end
+        ]
+        longest_length = max(
+            len(candidate['alias_tokens']) for candidate in latest
+        )
+        best = [
+            candidate for candidate in latest
+            if len(candidate['alias_tokens']) == longest_length
+        ]
+        target_indices = {candidate['target_index'] for candidate in best}
+        if len(target_indices) != 1:
+            return None, 'ambiguous_explicit_target_alias'
+
+        # Multiple synonymous aliases can produce the same target match.  The
+        # textual span is identical after normalization, so selecting the
+        # first is deterministic and does not change target identity.
+        return best[0], 'explicit_alias'
+
+
 def box_iou(first: Sequence[float], second: Sequence[float]) -> float:
     """Return IoU for normalized ``[xmin, ymin, xmax, ymax]`` boxes."""
     x_min = max(first[0], second[0])
@@ -373,48 +493,13 @@ class OnlineOracleCoordinateLogitsProcessor(LogitsProcessor):
         self.context_window_tokens = context_window_tokens
         self.boc_token_id = tokenizer.convert_tokens_to_ids(DEFAULT_BOC_TOKEN)
         self.eoc_token_id = tokenizer.convert_tokens_to_ids(DEFAULT_EOC_TOKEN)
-        self.targets = self._prepare_targets(oracle_targets)
+        self.target_matcher = ExplicitOracleTargetMatcher(
+            oracle_targets,
+            precision=self.precision,
+        )
+        self.targets = self.target_matcher.targets
         self._decisions_by_boc_offset: Dict[int, Dict[str, Any]] = {}
         self._suffix_by_boc_offset: Dict[int, List[int]] = {}
-
-    def _prepare_targets(self, oracle_targets: Sequence[Dict[str, Any]]):
-        prepared = []
-        seen_aliases = {}
-        for target_index, target in enumerate(oracle_targets):
-            if not isinstance(target, dict):
-                raise TypeError('each oracle target must be a dictionary')
-            object_name = target.get('object')
-            box = target.get('box')
-            aliases = target.get('aliases', [object_name])
-            if not isinstance(object_name, str) or not object_name.strip():
-                raise ValueError('oracle target requires a non-empty object name')
-            if not isinstance(aliases, (list, tuple)) or not aliases:
-                raise ValueError(f'oracle target {object_name!r} requires at least one alias')
-            normalized_aliases = []
-            for alias in aliases:
-                normalized = normalize_object_reference(alias)
-                if not normalized:
-                    raise ValueError(f'invalid empty alias for oracle target {object_name!r}')
-                if normalized not in normalized_aliases:
-                    normalized_aliases.append(normalized)
-            rounded_box = _validate_oracle_box(box, self.precision)
-            for alias in normalized_aliases:
-                if alias in seen_aliases:
-                    previous = seen_aliases[alias]
-                    raise ValueError(
-                        f'ambiguous alias {" ".join(alias)!r} shared by targets '
-                        f'{previous!r} and {object_name!r}'
-                    )
-                seen_aliases[alias] = object_name
-            prepared.append({
-                'target_index': target_index,
-                'object': object_name,
-                'box': rounded_box,
-                'aliases': normalized_aliases,
-            })
-        if not prepared:
-            raise ValueError('online oracle requires at least one target')
-        return prepared
 
     def _context_before_coordinate(self, generated_ids: Sequence[int], boc_offset: int):
         """Return the latest free-text segment and its normalized tail tokens."""
@@ -430,36 +515,7 @@ class OnlineOracleCoordinateLogitsProcessor(LogitsProcessor):
 
     def _match_target(self, local_text: str, context_tokens: Sequence[str]):
         """Return a unique most-recent, longest explicit alias match, if any."""
-        candidates = []
-        for target in self.targets:
-            for alias in target['aliases']:
-                for start in _find_token_subsequence_positions(context_tokens, alias):
-                    candidates.append({
-                        'target_index': target['target_index'],
-                        'object': target['object'],
-                        'box': target['box'],
-                        'alias_tokens': alias,
-                        'start': start,
-                        'end': start + len(alias),
-                    })
-        if not candidates:
-            return None, 'no_explicit_target_alias'
-
-        # The immediate referent is the latest explicit object phrase.  A
-        # longer phrase wins only when phrases end at the same position.
-        latest_end = max(candidate['end'] for candidate in candidates)
-        latest_candidates = [
-            candidate for candidate in candidates if candidate['end'] == latest_end
-        ]
-        longest_length = max(len(candidate['alias_tokens']) for candidate in latest_candidates)
-        best = [
-            candidate for candidate in latest_candidates
-            if len(candidate['alias_tokens']) == longest_length
-        ]
-        target_indices = {candidate['target_index'] for candidate in best}
-        if len(target_indices) != 1:
-            return None, 'ambiguous_explicit_target_alias'
-        return best[0], 'explicit_alias'
+        return self.target_matcher.match(context_tokens)
 
     def _make_suffix_ids(self, box: Box):
         box_text = ','.join(f'{value:.{self.precision}f}' for value in box)
@@ -494,6 +550,21 @@ class OnlineOracleCoordinateLogitsProcessor(LogitsProcessor):
         self._decisions_by_boc_offset[boc_offset] = decision
         return decision
 
+    def decision_for_coordinate(
+            self,
+            generated_ids: Sequence[int],
+            boc_offset: int,
+            coordinate_index: int) -> Dict[str, Any]:
+        """Resolve one coordinate with the same matcher used during decoding."""
+
+        if boc_offset not in self._decisions_by_boc_offset:
+            self._new_decision(
+                generated_ids,
+                boc_offset,
+                coordinate_index,
+            )
+        return dict(self._decisions_by_boc_offset[boc_offset])
+
     @property
     def events(self):
         return [
@@ -524,8 +595,11 @@ class OnlineOracleCoordinateLogitsProcessor(LogitsProcessor):
 
         current_boc = boc_positions[-1]
         coordinate_index = len(eoc_positions) + 1
-        if current_boc not in self._decisions_by_boc_offset:
-            self._new_decision(generated_ids, current_boc, coordinate_index)
+        self.decision_for_coordinate(
+            generated_ids,
+            current_boc,
+            coordinate_index,
+        )
         suffix_ids = self._suffix_by_boc_offset.get(current_boc)
         if suffix_ids is None:
             return scores

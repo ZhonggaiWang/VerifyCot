@@ -20,7 +20,11 @@ from model.load_model import (
     one_shot_reference_repair_infer,
 )
 from utils.coordinate_intervention import box_iou
-from verifier.run_paths import resolve_run_output
+from grounding_control.run_paths import (
+    create_run_layout,
+    write_run_config,
+    write_run_status,
+)
 
 
 def read_jsonl(path):
@@ -34,9 +38,17 @@ def parse_args():
     parser.add_argument('--manifest', required=True)
     parser.add_argument('--verifier-output', required=True)
     parser.add_argument('--image-dir', required=True)
-    parser.add_argument('--output', required=True)
+    parser.add_argument(
+        '--output', default=None,
+        help='Legacy output filename; omit for the canonical repair layout.',
+    )
+    parser.add_argument('--output-root', default='output')
     parser.add_argument('--run-id', default=None,
                         help='Output subdirectory. Defaults to a YYYYMMDD_HHMMSS timestamp.')
+    parser.add_argument(
+        '--run-split', default='full_238_matchable_198',
+        help='Exact evaluated population used in the canonical run identity.',
+    )
     parser.add_argument('--verifier-log', default=None,
                         help='Optional JSONL event log. Defaults to verifier_events.jsonl next to --output.')
     parser.add_argument(
@@ -52,14 +64,10 @@ def parse_args():
     parser.add_argument('--max-samples', type=int, default=None)
     parser.add_argument('--no-resume', action='store_true')
     parser.add_argument(
-        '--no-sandbox-refbind', action='store_true',
-        help='Backward-compatible alias for --sandbox-refbind-mode text_only.',
-    )
-    parser.add_argument(
-        '--sandbox-refbind-mode', choices=('bind', 'text_only', 'skip_q_refbind'), default='bind',
+        '--sandbox-refbind-mode', choices=('bind', 'skip_q_refbind'), default='bind',
         help=(
-            'bind: normal q REFbind; text_only: q has no <coor> tag; '
-            'skip_q_refbind: preserve <coor>q</coor> text but skip only V(q).'
+            'bind: normal q REFbind; skip_q_refbind: preserve '
+            '<coor>q</coor> text but skip only V(q).'
         ),
     )
     parser.add_argument('--verbose', action='store_true',
@@ -133,10 +141,7 @@ def make_summary(records, args):
             str(step): metrics(items) for step, items in sorted(by_step.items())
         },
         'settings': {
-            'repair_mode': (
-                f'{args.repair_mode}_text_only_q'
-                if args.sandbox_refbind_mode == 'text_only' else args.repair_mode
-            ),
+            'repair_mode': args.repair_mode,
             'temperature': args.temperature,
             'max_new_tokens': args.max_new_tokens,
             'mode': 'one_shot_reference_random_box_repair',
@@ -151,13 +156,42 @@ def make_summary(records, args):
 
 def main():
     args = parse_args()
-    if args.no_sandbox_refbind:
-        if args.sandbox_refbind_mode != 'bind':
-            raise ValueError('use either --no-sandbox-refbind or --sandbox-refbind-mode, not both')
-        args.sandbox_refbind_mode = 'text_only'
-    output_path, run_id = resolve_run_output(args.output, args.run_id)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    verifier_log_path = Path(args.verifier_log) if args.verifier_log else output_path.with_name('verifier_events.jsonl')
+    setting = '{}__{}'.format(
+        args.repair_mode,
+        args.sandbox_refbind_mode,
+    )
+    layout = create_run_layout(
+        dataset='vstar',
+        split=args.run_split,
+        study='repair',
+        method='one_shot',
+        setting=setting,
+        run_id=args.run_id,
+        output=args.output,
+        output_root=args.output_root,
+    )
+    layout.ensure_run_directories()
+    output_path = layout.results_path
+    run_id = layout.run_id
+    verifier_log_path = (
+        Path(args.verifier_log) if args.verifier_log else layout.events_path
+    )
+    write_run_config(layout, {
+        'command': list(sys.argv),
+        'arguments': vars(args),
+        'inputs': {
+            'manifest': args.manifest,
+            'verifier_output': args.verifier_output,
+            'image_dir': args.image_dir,
+        },
+        'components': {
+            'generator': args.model_path,
+            'verifier': 'stored_oracle',
+            'repair_mode': args.repair_mode,
+            'sandbox_refbind_mode': args.sandbox_refbind_mode,
+        },
+    })
+    write_run_status(layout, 'running', completed_records=0)
     existing = [] if args.no_resume or not output_path.exists() else read_jsonl(output_path)
     completed = {record['sample_id'] for record in existing if record.get('status') == 'ok'}
     records = [record for record in read_jsonl(args.manifest) if record['sample_id'] not in completed]
@@ -166,14 +200,22 @@ def main():
     print(f'Run id: {run_id}; output: {output_path}')
     print(f'Manifest samples: {len(read_jsonl(args.manifest))}; running: {len(records)}; resumed: {len(completed)}')
     if not records:
-        summary_path = output_path.with_suffix('.summary.json')
+        summary_path = layout.summary_path
         summary = make_summary(existing, args)
         summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        write_run_status(
+            layout,
+            'completed',
+            completed_records=summary['successful_records'],
+            error_records=summary['error_records'],
+            summary_path=str(summary_path),
+        )
         print(json.dumps(summary, ensure_ascii=False, indent=2))
         print(f'Summary: {summary_path}')
         return
     model, preprocessor = load_model(args.model_path, precision='fp16')
-    with output_path.open('a', encoding='utf-8') as handle:
+    output_mode = 'w' if args.no_resume else 'a'
+    with output_path.open(output_mode, encoding='utf-8') as handle:
         for item in tqdm(records, desc='VStar one-shot reference repair'):
             record = {key: item[key] for key in (
                 'sample_id', 'sample_index', 'question_id', 'image', 'question',
@@ -228,8 +270,16 @@ def main():
     print(f'Verifier event log: {verifier_log_path}')
     all_records = read_jsonl(output_path)
     summary = make_summary(all_records, args)
-    summary_path = output_path.with_suffix('.summary.json')
+    summary_path = layout.summary_path
     summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    write_run_status(
+        layout,
+        'completed' if summary['error_records'] == 0
+        else 'completed_with_errors',
+        completed_records=summary['successful_records'],
+        error_records=summary['error_records'],
+        summary_path=str(summary_path),
+    )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     print(f'Summary: {summary_path}')
 

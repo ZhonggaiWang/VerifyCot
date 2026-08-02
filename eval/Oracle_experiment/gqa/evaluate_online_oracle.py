@@ -24,6 +24,12 @@ from common import (
     generate_gqa_final_answer,
     make_gqa_conversation,
 )
+from grounding_control.run_paths import (
+    create_exact_output_layout,
+    create_run_layout,
+    write_run_config,
+    write_run_status,
+)
 
 ORACLE_BOX_COORDINATE_SYSTEM = 'normalized_xyxy_on_center_padded_square'
 
@@ -32,7 +38,17 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model-path', default='weights/Volcano-7b')
     parser.add_argument('--manifest-path', required=True)
-    parser.add_argument('--output', required=True)
+    parser.add_argument(
+        '--output',
+        default=None,
+        help=(
+            'Exact results JSONL path. Omit it to use the canonical '
+            'output/<dataset>/runs/... layout.'
+        ),
+    )
+    parser.add_argument('--output-root', default='output')
+    parser.add_argument('--run-id', default=None)
+    parser.add_argument('--run-split', default='val_1000_dev')
     parser.add_argument('--max-new-tokens', type=int, default=2048)
     parser.add_argument('--final-max-new-tokens', type=int, default=32)
     parser.add_argument('--temperature', type=float, default=0.0)
@@ -119,8 +135,40 @@ def subset_summary(records):
 def main():
     args = parse_args()
     manifest = read_jsonl(args.manifest_path)
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if args.output is None:
+        layout = create_run_layout(
+            dataset='gqa',
+            split=args.run_split,
+            study='oracle',
+            method='always_gt',
+            setting='default',
+            run_id=args.run_id,
+            output_root=args.output_root,
+        )
+    else:
+        requested_output = Path(args.output)
+        layout = create_exact_output_layout(
+            dataset='gqa',
+            split=args.run_split,
+            study='oracle',
+            method='always_gt',
+            setting='default',
+            run_id=args.run_id or requested_output.parent.name,
+            output=requested_output,
+        )
+    layout.ensure_run_directories()
+    output_path = layout.results_path
+    write_run_config(layout, {
+        'command': list(sys.argv),
+        'arguments': vars(args),
+        'inputs': {'manifest': args.manifest_path},
+        'components': {
+            'generator': args.model_path,
+            'verifier': 'oracle_target_matcher',
+            'grounder': 'oracle_gt_box',
+        },
+    })
+    write_run_status(layout, 'running', completed_records=0)
     existing = [] if args.no_resume else load_existing(output_path)
     incompatible = [
         record for record in existing
@@ -215,10 +263,18 @@ def main():
             'oracle_box_coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
         },
     }
-    summary_path = output_path.with_suffix('.summary.json')
+    summary_path = layout.summary_path
     with summary_path.open('w') as handle:
         json.dump(summary, handle, ensure_ascii=False, indent=2)
         handle.write('\n')
+    error_records = summary.get('errors', 0)
+    write_run_status(
+        layout,
+        'completed' if error_records == 0 else 'completed_with_errors',
+        completed_records=summary.get('successful_records', 0),
+        error_records=error_records,
+        summary_path=str(summary_path),
+    )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     print(f'Per-example results: {output_path}')
     print(f'Summary: {summary_path}')

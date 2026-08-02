@@ -23,6 +23,12 @@ from tqdm import tqdm
 
 from constants import ALL_IMG_TOKENS_STR, COT_ACTIVATION, DEFAULT_GRD_TOKEN
 from model.load_model import baseline_option_infer, counterfactual_option_infer, load_model
+from grounding_control.run_paths import (
+    create_exact_output_layout,
+    create_run_layout,
+    write_run_config,
+    write_run_status,
+)
 
 
 def parse_args():
@@ -34,7 +40,13 @@ def parse_args():
                         help='VStar repository root containing the relative image paths.')
     parser.add_argument('--annotation-root', default=None,
                         help='Root for paired VStar annotation JSON files (defaults to --image-dir).')
-    parser.add_argument('--output', required=True, help='JSONL path for per-example results.')
+    parser.add_argument(
+        '--output', default=None,
+        help='Exact results JSONL path; omit for the canonical run layout.',
+    )
+    parser.add_argument('--output-root', default='output')
+    parser.add_argument('--run-id', default=None)
+    parser.add_argument('--run-split', default='full_238')
     parser.add_argument('--max-new-tokens', type=int, default=2048,
                         help='2048 matches the repository VStar benchmark command.')
     parser.add_argument('--temperature', type=float, default=0.0)
@@ -228,8 +240,50 @@ def main():
         resolved_perturb_index = 'last'
     else:
         resolved_perturb_index = args.perturb_index
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    setting = (
+        'index_{}'.format(args.perturb_index)
+        if args.perturb_index is not None else args.perturb_position
+    )
+    study = 'baseline' if args.baseline_only else 'counterfactual'
+    method = 'volcano_7b' if args.baseline_only else args.perturb_mode
+    setting = 'default' if args.baseline_only else setting
+    if args.output is None:
+        layout = create_run_layout(
+            dataset='vstar',
+            split=args.run_split,
+            study=study,
+            method=method,
+            setting=setting,
+            run_id=args.run_id,
+            output_root=args.output_root,
+        )
+    else:
+        requested_output = Path(args.output)
+        layout = create_exact_output_layout(
+            dataset='vstar',
+            split=args.run_split,
+            study=study,
+            method=method,
+            setting=setting,
+            run_id=args.run_id or requested_output.parent.name,
+            output=requested_output,
+        )
+    layout.ensure_run_directories()
+    output_path = layout.results_path
+    write_run_config(layout, {
+        'command': list(sys.argv),
+        'arguments': vars(args),
+        'inputs': {
+            'questions': args.questions_path,
+            'image_dir': args.image_dir,
+            'annotation_root': args.annotation_root,
+        },
+        'components': {
+            'generator': args.model_path,
+            'intervention': None if args.baseline_only else args.perturb_mode,
+        },
+    })
+    write_run_status(layout, 'running', completed_records=0)
     existing_records = [] if args.no_resume else load_records(output_path)
     completed_indices = {record['sample_index'] for record in existing_records if 'sample_index' in record}
 
@@ -242,7 +296,8 @@ def main():
 
     if indices:
         model, preprocessor = load_model(args.model_path, precision='fp16')
-    with output_path.open('a') as handle:
+    output_mode = 'w' if args.no_resume else 'a'
+    with output_path.open(output_mode) as handle:
         for index in tqdm(indices, desc='VStar counterfactual evaluation'):
             item = dataset[index]
             label = item['label_index']
@@ -300,9 +355,18 @@ def main():
 
     records = load_records(output_path)
     summary = make_summary(records, args)
-    summary_path = output_path.with_suffix('.summary.json')
+    summary_path = layout.summary_path
     with summary_path.open('w') as handle:
         json.dump(summary, handle, ensure_ascii=False, indent=2)
+        handle.write('\n')
+    error_records = summary.get('errors', 0)
+    write_run_status(
+        layout,
+        'completed' if error_records == 0 else 'completed_with_errors',
+        completed_records=summary.get('successful_records', 0),
+        error_records=error_records,
+        summary_path=str(summary_path),
+    )
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     print(f'Per-example results: {output_path}')
     print(f'Summary: {summary_path}')

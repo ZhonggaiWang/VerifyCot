@@ -17,6 +17,10 @@ esac
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROJECT_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 RUNS=${RUNS:-2}
+if [[ ! "$RUNS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "RUNS must be a positive integer, got: $RUNS" >&2
+  exit 2
+fi
 GPU_IDLE_MEMORY_MB=${GPU_IDLE_MEMORY_MB:-500}
 POLL_SECONDS=${POLL_SECONDS:-30}
 # Set GPU_IDS=0,1,2 (or CUDA_VISIBLE_DEVICES=0,1,2) before launching to
@@ -35,9 +39,15 @@ case "$INTERVENTION_MODE" in
     exit 2
     ;;
 esac
-OUTPUT_ROOT=${OUTPUT_ROOT:-$PROJECT_ROOT/output/vstar/counterfactual}
+VSTAR_SPLIT=${VSTAR_SPLIT:-full_238}
+# OUTPUT_ROOT is the counterfactual study root. Historical explicit overrides
+# remain supported; only the default uses the canonical experiment layout.
+OUTPUT_ROOT=${OUTPUT_ROOT:-$PROJECT_ROOT/output/vstar/runs/$VSTAR_SPLIT/counterfactual}
+if [[ "$OUTPUT_ROOT" != /* ]]; then
+  OUTPUT_ROOT="$PROJECT_ROOT/$OUTPUT_ROOT"
+fi
 RUN_TAG=${RUN_TAG:-$(date +%Y%m%d_%H%M%S)}
-RUN_ROOT="$OUTPUT_ROOT/$INTERVENTION_MODE/$RUN_TAG"
+STUDY_ROOT="$OUTPUT_ROOT/$INTERVENTION_MODE"
 
 if ! command -v nvidia-smi >/dev/null 2>&1; then
   echo "nvidia-smi is required to detect idle GPUs." >&2
@@ -55,6 +65,7 @@ fi
 declare -a TASK_GROUPS=()
 declare -a TASK_POSITIONS=()
 declare -a TASK_RUNS=()
+declare -a SELECTED_POSITIONS=()
 
 add_group() {
   local group=$1
@@ -68,19 +79,30 @@ add_group() {
 }
 
 case "$MODE" in
-  random) add_group random_position random ;;
-  first)  add_group first_position first ;;
-  last)   add_group last_position last ;;
+  random)
+    SELECTED_POSITIONS=(random)
+    add_group random random
+    ;;
+  first)
+    SELECTED_POSITIONS=(first)
+    add_group first first
+    ;;
+  last)
+    SELECTED_POSITIONS=(last)
+    add_group last last
+    ;;
   all)
-    add_group random_position random
-    add_group first_position first
-    add_group last_position last
+    SELECTED_POSITIONS=(random first last)
+    add_group random random
+    add_group first first
+    add_group last last
     ;;
 esac
 
-mkdir -p "$RUN_ROOT"
+mkdir -p "$STUDY_ROOT"
 echo "Intervention mode: $INTERVENTION_MODE"
-echo "Run root: $RUN_ROOT"
+echo "Study root: $STUDY_ROOT"
+echo "Run id: $RUN_TAG"
 echo "Tasks: ${#TASK_GROUPS[@]}; idle GPU threshold: ${GPU_IDLE_MEMORY_MB} MB"
 
 declare -A ACTIVE_PID_BY_GPU=()
@@ -137,10 +159,10 @@ launch_task() {
   local group=${TASK_GROUPS[$next_task]}
   local position=${TASK_POSITIONS[$next_task]}
   local run_number=${TASK_RUNS[$next_task]}
-  local task_dir="$RUN_ROOT/$group/run_$(printf '%02d' "$run_number")"
+  local task_dir="$STUDY_ROOT/$group/$RUN_TAG/repetitions/repeat_$(printf '%02d' "$run_number")"
   local output_path="$task_dir/results.jsonl"
   local log_path="$task_dir/run.log"
-  local label="$group/run_$(printf '%02d' "$run_number")"
+  local label="$group/repeat_$(printf '%02d' "$run_number")"
 
   mkdir -p "$task_dir"
   echo "[$(date '+%F %T')] launching gpu=$gpu task=$label"
@@ -152,6 +174,8 @@ launch_task() {
       --questions-path "$VSTAR_QUESTIONS_PATH" \
       --image-dir "$VSTAR_IMAGE_DIR" \
       --output "$output_path" \
+      --run-id "$RUN_TAG" \
+      --run-split "$VSTAR_SPLIT" \
       --perturb-position "$position" \
       --perturb-mode "$INTERVENTION_MODE" \
       --random-seeds \
@@ -187,4 +211,29 @@ while (( next_task < ${#TASK_GROUPS[@]} || ${#ACTIVE_PID_BY_GPU[@]} > 0 )); do
   fi
 done
 
-echo "[$(date '+%F %T')] all tasks finished: $RUN_ROOT"
+AGGREGATION_FAILURES=0
+for position in "${SELECTED_POSITIONS[@]}"; do
+  position_run_root="$STUDY_ROOT/$position/$RUN_TAG"
+  echo "[$(date '+%F %T')] aggregating repetitions: $position_run_root"
+  if ! (
+    cd "$PROJECT_ROOT"
+    conda run -n vocot python -u \
+      eval/Oracle_experiment/vstar/aggregate_repetitions.py \
+      --run-root "$position_run_root" \
+      --run-id "$RUN_TAG" \
+      --run-split "$VSTAR_SPLIT" \
+      --method "$INTERVENTION_MODE" \
+      --position "$position" \
+      --expected-repetitions "$RUNS"
+  ); then
+    echo "Repetition aggregation failed: $position_run_root" >&2
+    AGGREGATION_FAILURES=$(( AGGREGATION_FAILURES + 1 ))
+  fi
+done
+
+if (( AGGREGATION_FAILURES > 0 )); then
+  echo "$AGGREGATION_FAILURES VStar repetition aggregation(s) failed." >&2
+  exit 1
+fi
+
+echo "[$(date '+%F %T')] all tasks and repetition summaries finished: $STUDY_ROOT/*/$RUN_TAG"

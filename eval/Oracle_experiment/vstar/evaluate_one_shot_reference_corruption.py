@@ -19,7 +19,11 @@ from model.load_model import (
     load_model,
     one_shot_reference_corruption_infer,
 )
-from verifier.run_paths import resolve_run_output
+from grounding_control.run_paths import (
+    create_run_layout,
+    write_run_config,
+    write_run_status,
+)
 
 
 def read_jsonl(path):
@@ -32,9 +36,17 @@ def parse_args():
     parser.add_argument('--model-path', default='weights/Volcano-7b')
     parser.add_argument('--manifest', required=True)
     parser.add_argument('--image-dir', required=True)
-    parser.add_argument('--output', required=True)
+    parser.add_argument(
+        '--output', default=None,
+        help='Legacy output filename; omit for the canonical counterfactual layout.',
+    )
+    parser.add_argument('--output-root', default='output')
     parser.add_argument('--run-id', default=None,
                         help='Output subdirectory. Defaults to a YYYYMMDD_HHMMSS timestamp.')
+    parser.add_argument(
+        '--run-split', default='full_238_matchable_198',
+        help='Exact evaluated population used in the canonical run identity.',
+    )
     parser.add_argument('--event-log', default=None)
     parser.add_argument('--max-new-tokens', type=int, default=2048)
     parser.add_argument('--temperature', type=float, default=0.0)
@@ -93,9 +105,34 @@ def make_summary(records, args):
 
 def main():
     args = parse_args()
-    output_path, run_id = resolve_run_output(args.output, args.run_id)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    event_log = Path(args.event_log) if args.event_log else output_path.with_name('corruption_events.jsonl')
+    layout = create_run_layout(
+        dataset='vstar',
+        split=args.run_split,
+        study='counterfactual',
+        method='one_shot_reference_corruption',
+        setting='random_box',
+        run_id=args.run_id,
+        output=args.output,
+        output_root=args.output_root,
+    )
+    layout.ensure_run_directories()
+    output_path = layout.results_path
+    run_id = layout.run_id
+    event_log = Path(args.event_log) if args.event_log else layout.events_path
+    write_run_config(layout, {
+        'command': list(sys.argv),
+        'arguments': vars(args),
+        'inputs': {
+            'manifest': args.manifest,
+            'image_dir': args.image_dir,
+        },
+        'components': {
+            'generator': args.model_path,
+            'verifier': None,
+            'intervention': 'one_shot_random_box',
+        },
+    })
+    write_run_status(layout, 'running', completed_records=0)
     existing = [] if args.no_resume or not output_path.exists() else read_jsonl(output_path)
     completed = {record['sample_id'] for record in existing if record.get('status') == 'ok'}
     pending = [record for record in read_jsonl(args.manifest) if record['sample_id'] not in completed]
@@ -105,7 +142,8 @@ def main():
     print(f'Manifest samples: {len(read_jsonl(args.manifest))}; running: {len(pending)}; resumed: {len(completed)}')
     if pending:
         model, preprocessor = load_model(args.model_path, precision='fp16')
-        with output_path.open('a', encoding='utf-8') as handle:
+        output_mode = 'w' if args.no_resume else 'a'
+        with output_path.open(output_mode, encoding='utf-8') as handle:
             for item in tqdm(pending, desc='VStar one-shot random-box corruption'):
                 record = {key: item[key] for key in (
                     'sample_id', 'sample_index', 'question_id', 'image', 'question', 'label', 'category',
@@ -135,8 +173,17 @@ def main():
                 handle.write(json.dumps(record, ensure_ascii=False) + '\n')
                 handle.flush()
     records = read_jsonl(output_path) if output_path.exists() else []
-    summary_path = output_path.with_suffix('.summary.json')
-    summary_path.write_text(json.dumps(make_summary(records, args), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    summary = make_summary(records, args)
+    summary_path = layout.summary_path
+    summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    write_run_status(
+        layout,
+        'completed' if summary['error_records'] == 0
+        else 'completed_with_errors',
+        completed_records=summary['successful_records'],
+        error_records=summary['error_records'],
+        summary_path=str(summary_path),
+    )
     print(f'Event log: {event_log}')
     print(f'Summary: {summary_path}')
 
