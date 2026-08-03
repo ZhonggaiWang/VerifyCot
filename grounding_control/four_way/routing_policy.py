@@ -40,10 +40,8 @@ class RoutingDecision:
 
     @property
     def expert_role(self):
-        if self.action == 'relocate':
+        if self.action in {'relocate', 'expand', 'tighten'}:
             return 'grounder'
-        if self.action in {'expand', 'tighten'}:
-            return 'box_refiner'
         return None
 
 
@@ -84,9 +82,9 @@ class RoutingPolicy:
         if action == 'relocate':
             return 'routed_to_grounder'
         if action == 'expand':
-            return 'routed_to_box_refiner_expand'
+            return 'routed_to_grounder_after_expand_label'
         if action == 'tighten':
-            return 'routed_to_box_refiner_tighten'
+            return 'routed_to_grounder_after_tighten_label'
         if action == 'abstain':
             return 'routing_abstained'
         return detail

@@ -20,14 +20,13 @@ from .contracts import (
     ACTION_OUTPUT_SCHEMA,
     ActionVerifierBackend,
     ActionVerifierOutput,
-    BoxRefinerBackend,
 )
 from .expert_dispatch import FourWayExpertDispatcher
 from .routing_policy import RoutingDecision, RoutingPolicy
 
 
 class FourWayPrecommitGroundingController(CoordinateRolloutBase):
-    """Route four verifier actions to a Grounder or BoxRefiner."""
+    """Retain four-way diagnostics while routing all rejection actions to a Grounder."""
 
     def __init__(
             self,
@@ -40,7 +39,6 @@ class FourWayPrecommitGroundingController(CoordinateRolloutBase):
             verifier_confidence_threshold: float = 0.8,
             log_path: Optional[str] = None,
             sample_context: Optional[Mapping[str, Any]] = None,
-            box_refiner: Optional[BoxRefinerBackend] = None,
             routing_policy: Optional[RoutingPolicy] = None,
             expert_dispatcher: Optional[FourWayExpertDispatcher] = None,
             missing_expert_policy: str = 'fail_open'):
@@ -60,7 +58,6 @@ class FourWayPrecommitGroundingController(CoordinateRolloutBase):
         )
         self.verifier = verifier
         self.grounder = grounder
-        self.box_refiner = box_refiner
         self.verifier_confidence_threshold = float(
             verifier_confidence_threshold
         )
@@ -70,10 +67,7 @@ class FourWayPrecommitGroundingController(CoordinateRolloutBase):
         )
         self.expert_dispatcher = (
             expert_dispatcher
-            or FourWayExpertDispatcher(
-                grounder=grounder,
-                box_refiner=box_refiner,
-            )
+            or FourWayExpertDispatcher(grounder=grounder)
         )
         self.missing_expert_policy = missing_expert_policy
 
@@ -186,7 +180,6 @@ class FourWayPrecommitGroundingController(CoordinateRolloutBase):
             committed_box = request.candidate_bbox
             committed_tokens = candidate_tokens
             grounder_invoked = False
-            box_refiner_invoked = False
             grounder_result = None
             expert_result = None
             missing_expert_error = None
@@ -225,7 +218,6 @@ class FourWayPrecommitGroundingController(CoordinateRolloutBase):
                     'router_action': routing_decision.router_action,
                     'expert_role': None,
                     'grounder_invoked': False,
-                    'box_refiner_invoked': False,
                     'candidate_committed': False,
                     # This is an auditable terminal decision, not a generated
                     # coordinate in the returned trajectory.  ``routing_infer``
@@ -274,11 +266,8 @@ class FourWayPrecommitGroundingController(CoordinateRolloutBase):
                 committed_tokens, committed_box = (
                     self._encode_expert_coordinate(expert_result.bbox)
                 )
-                grounder_invoked = expert_result.expert_role == 'grounder'
-                box_refiner_invoked = (
-                    expert_result.expert_role == 'box_refiner'
-                )
-                grounder_result = expert_result if grounder_invoked else None
+                grounder_invoked = True
+                grounder_result = expert_result
                 router_action = expert_result.metadata.get(
                     'router_action',
                     routing_decision.router_action,
@@ -385,7 +374,6 @@ class FourWayPrecommitGroundingController(CoordinateRolloutBase):
                 'missing_expert_error': missing_expert_error,
                 'missing_expert_metadata': missing_expert_metadata,
                 'grounder_invoked': grounder_invoked,
-                'box_refiner_invoked': box_refiner_invoked,
                 'grounder_source': (
                     None if grounder_result is None else grounder_result.source
                 ),

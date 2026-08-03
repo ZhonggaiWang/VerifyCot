@@ -206,6 +206,16 @@ class QwenVerifierRenderingTests(unittest.TestCase):
             set(prepared.marked_image.getdata()),
         )
 
+    def test_uncapped_grounding_resize_preserves_factor_rounded_source_size(self):
+        self.assertEqual(
+            qwen_smart_resize_size(
+                (7500, 5000),
+                min_pixels=4 * 28 * 28,
+                max_pixels=None,
+            ),
+            (7504, 5012),
+        )
+
 
 class QwenGroundingGeometryTests(unittest.TestCase):
     def test_geometry_router_distinguishes_all_four_actions(self):
@@ -513,11 +523,24 @@ class QwenVerifierParsingTests(unittest.TestCase):
         self.assertNotIn('Image 2', prompt)
 
 class QwenVerifierRunnerConfigurationTests(unittest.TestCase):
-    def test_runner_uses_bounded_default_visual_resolution(self):
+    def test_runner_uses_no_project_level_visual_resolution_cap(self):
         runner = LocalQwen25VLRunner(model_path='unused')
         self.assertEqual(runner.min_pixels, DEFAULT_MIN_PIXELS)
-        self.assertEqual(runner.max_pixels, 512 * 28 * 28)
+        self.assertIsNone(runner.max_pixels)
         self.assertEqual(runner.max_pixels, DEFAULT_MAX_PIXELS)
+
+    def test_uncapped_runner_derives_limit_from_actual_pil_images(self):
+        messages = [{
+            'role': 'user',
+            'content': [
+                {'type': 'image', 'image': Image.new('RGB', (280, 280))},
+                {'type': 'text', 'text': 'Locate the object.'},
+            ],
+        }]
+        self.assertEqual(
+            LocalQwen25VLRunner._message_image_max_pixels(messages),
+            280 * 280,
+        )
 
     def test_runner_rejects_invalid_pixel_bounds(self):
         with self.assertRaises(ValueError):

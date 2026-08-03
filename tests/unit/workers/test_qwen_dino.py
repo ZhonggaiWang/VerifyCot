@@ -267,15 +267,5 @@ class QwenDinoWorkerTests(unittest.TestCase):
         self.assertEqual(response['error_type'], 'JSONDecodeError')
         self.assertIsNone(response['request_id'])
 
-    def test_refiner_operation_is_reserved_but_not_faked(self):
-        response = process_request_line(
-            json.dumps(self._base_request('refine')),
-            QwenVerifierDinoGrounderWorkerEngine(),
-            StringIO(),
-        )
-        self.assertFalse(response['ok'])
-        self.assertEqual(response['error'], 'box_refiner_not_configured')
-
-
 if __name__ == '__main__':
     unittest.main()

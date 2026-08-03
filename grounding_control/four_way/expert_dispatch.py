@@ -1,28 +1,27 @@
-"""Dispatch four-action corrections to Grounder and BoxRefiner experts."""
+"""Dispatch every archived correction action to the configured Grounder."""
 
 from typing import Optional
 
 from ..contracts import GrounderBackend
-from ..contracts.errors import ExpertNotConfiguredError
 from ..contracts.verifier import VerificationRequest
 from ..core.expert_dispatch import ExpertDispatcher, ExpertDispatchResult
-from .contracts import (
-    ActionVerifierOutput,
-    BoxRefinerBackend,
-    RefinementRequest,
-)
+from .contracts import ActionVerifierOutput
 from .routing_policy import RoutingDecision
 
 
 class FourWayExpertDispatcher(ExpertDispatcher):
-    """Route relocate to Grounder and expand/tighten to BoxRefiner."""
+    """Collapse every misalignment action into one Grounder invocation.
+
+    The archived verifier may still emit ``relocate``, ``expand``, or
+    ``tighten`` for diagnostic reproduction.  The active correction design no
+    longer has a separate refinement role, so all three actions request an
+    independent localization from the same Grounder contract.
+    """
 
     def __init__(
             self,
-            grounder: Optional[GrounderBackend] = None,
-            box_refiner: Optional[BoxRefinerBackend] = None):
+            grounder: Optional[GrounderBackend] = None):
         super().__init__(grounder=grounder)
-        self.box_refiner = box_refiner
 
     def dispatch(
             self,
@@ -33,24 +32,8 @@ class FourWayExpertDispatcher(ExpertDispatcher):
             raise ValueError(
                 f'routing action {decision.action!r} does not call an expert'
             )
-        if decision.action == 'relocate':
-            return self.dispatch_grounder(
-                request.grounding_request(),
-                action=decision.action,
-            )
-        if self.box_refiner is None:
-            raise ExpertNotConfiguredError(
-                f'routing requested {decision.action} but no box refiner '
-                'is configured'
-            )
-        result = self.box_refiner.refine(RefinementRequest(
-            verification_request=request,
-            verification=verification,
-            mode=decision.action,
-        ))
-        return self._finalize_result(
-            result,
-            role='box_refiner',
+        return self.dispatch_grounder(
+            request.grounding_request(),
             action=decision.action,
         )
 

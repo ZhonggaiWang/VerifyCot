@@ -38,8 +38,6 @@ contract.
 - `AlignmentVerifierBackend` scores whether a candidate supports its object
   reference.  It never performs correction.
 - `GrounderBackend` independently relocates the referenced object.
-- `grounding_control.four_way.BoxRefinerBackend` expands or tightens an
-  existing region for archived four-way diagnostics.
 - `PrecommitGroundingController` implements the pre-commit generation and
   clean-commit loop.
 
@@ -71,8 +69,8 @@ sandbox REFbind ablations remain under `legacy/`.
 - `verifiers/`: binary verifier implementations. Its Qwen path uses
   `backend.py`, `classifier.py`, `prompt.py`, `parser.py`, and `inputs.py`.
 - `experts/grounders/`: binary-mainline correction adapters.
-- `four_way/`: archived action contracts, controller, policy, verifiers,
-  BoxRefiner experts, and action workers.
+- `four_way/`: archived action contracts, controller, policy, verifiers, and
+  action workers. Every non-accept action now routes to a Grounder.
 - `models/`: reusable Qwen and Grounding DINO model capabilities.
 - `transport/`: model-agnostic JSONL transport.
 - `workers/`: persistent binary verifier and role-specific Grounder processes,

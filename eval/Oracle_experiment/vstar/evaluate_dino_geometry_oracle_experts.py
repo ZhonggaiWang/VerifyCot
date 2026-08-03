@@ -2,10 +2,9 @@
 
 The VoCoT generator runs in this process. A persistent Grounding DINO worker
 runs in a separate process/GPU and judges every pre-commit coordinate as one
-of no_action/relocate/expand/tighten. Relocate is routed to an oracle
-Grounder; expand/tighten are routed to an oracle BoxRefiner. Both experts use
-the same conservative explicit-alias resolver and fail open when no unique GT
-target can be resolved.
+of no_action/relocate/expand/tighten. Every non-accept label is routed to the
+same oracle Grounder. The expert uses the conservative explicit-alias resolver
+and fails open when no unique GT target can be resolved.
 """
 
 import argparse
@@ -35,7 +34,6 @@ from grounding_control.contracts import validate_normalized_box
 from grounding_control.four_way import (
     ACTION_NAMES,
     ActionVerifierOutput,
-    OracleBoxRefinerBackend,
     RemoteActionVerifierBackend,
     RoutingPolicy,
 )
@@ -257,8 +255,8 @@ def _experiment_signature(args):
         },
         'experts': {
             'relocate': 'oracle_grounder',
-            'expand': 'oracle_box_refiner',
-            'tighten': 'oracle_box_refiner',
+            'expand': 'oracle_grounder',
+            'tighten': 'oracle_grounder',
         },
     }
     canonical = json.dumps(
@@ -756,9 +754,6 @@ def _event_metrics(records):
         'grounder_invocation_count': sum(
             bool(event.get('grounder_invoked')) for event in events
         ),
-        'box_refiner_invocation_count': sum(
-            bool(event.get('box_refiner_invoked')) for event in events
-        ),
         'expert_unavailable_fail_open_count': sum(
             event.get('missing_expert_error') is not None for event in events
         ),
@@ -846,8 +841,8 @@ def _make_summary(
             'fail_fast': args.fail_fast,
             'oracle_experts': {
                 'relocate': 'oracle_grounder',
-                'expand': 'oracle_box_refiner',
-                'tighten': 'oracle_box_refiner',
+                'expand': 'oracle_grounder',
+                'tighten': 'oracle_grounder',
                 'unmatched_policy': 'fail_open_keep_candidate',
                 'alias_policy': (
                     'latest_unique_longest_explicit_alias'
@@ -916,7 +911,6 @@ def main():
             'generator': args.model_path,
             'verifier': 'grounding_dino_geometry',
             'grounder': 'oracle',
-            'box_refiner': 'oracle',
         },
         'coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
         'worker_ping': None,
@@ -1066,7 +1060,6 @@ def main():
                 context_window_tokens=args.context_window_tokens,
             )
             grounder = OracleGrounderBackend(resolver)
-            box_refiner = OracleBoxRefinerBackend(resolver)
             routing_policy = RoutingPolicy(
                 confidence_threshold=args.verifier_confidence_threshold,
                 unsupported_action='no_action',
@@ -1127,7 +1120,6 @@ def main():
                         image=image,
                         verifier_backend=verifier,
                         grounder_backend=grounder,
-                        box_refiner_backend=box_refiner,
                         routing_policy=routing_policy,
                         missing_expert_policy=args.missing_expert_policy,
                         query=None,

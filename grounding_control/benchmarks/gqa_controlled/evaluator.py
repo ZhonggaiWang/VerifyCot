@@ -301,8 +301,8 @@ def parse_args(argv=None) -> argparse.Namespace:
         type=int,
         default=DEFAULT_MAX_PIXELS,
         help=(
-            'maximum Qwen image pixels per image; default corresponds to '
-            'about 512 merged visual tokens per image'
+            'optional Qwen image-pixel cap; omitted by default to preserve '
+            'source resolution'
         ),
     )
     parser.add_argument('--attn-implementation', default='sdpa')
@@ -511,9 +511,11 @@ def _run_evaluation(
         raise ValueError('--limit must be positive')
     if args.max_new_tokens <= 0:
         raise ValueError('--max-new-tokens must be positive')
-    if args.min_pixels <= 0 or args.max_pixels <= 0:
-        raise ValueError('--min-pixels and --max-pixels must be positive')
-    if args.min_pixels > args.max_pixels:
+    if args.min_pixels <= 0:
+        raise ValueError('--min-pixels must be positive')
+    if args.max_pixels is not None and args.max_pixels <= 0:
+        raise ValueError('--max-pixels must be positive when provided')
+    if args.max_pixels is not None and args.min_pixels > args.max_pixels:
         raise ValueError('--min-pixels must not exceed --max-pixels')
     if args.crop_min_side <= 28:
         raise ValueError('--crop-min-side must be greater than 28')

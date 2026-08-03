@@ -1,8 +1,8 @@
 """Conservative reference-to-GT resolution for oracle-only experiments.
 
 This module is deliberately neutral infrastructure rather than a verifier or
-an expert backend.  Oracle verifiers, Grounders, and BoxRefiners all consume
-the same resolver so their target identity policy cannot silently diverge.
+an expert backend. Oracle verifiers and Grounders consume the same resolver so
+their target identity policy cannot silently diverge.
 """
 
 from dataclasses import dataclass

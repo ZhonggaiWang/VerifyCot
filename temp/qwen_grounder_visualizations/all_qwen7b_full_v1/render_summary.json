@@ -1,0 +1,7 @@
+{
+  "results": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/output/vstar/runs/full_238/grounder_accuracy/qwen25_vl_7b/compact_json_v1/qwen7b_full_v1/results.jsonl",
+  "rendered_target_count": 292,
+  "unique_sample_count": 238,
+  "output_dir": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/temp/qwen_grounder_visualizations/all_qwen7b_full_v1",
+  "index": "/home/zhonggai/python-work-space/VLM-GCOT/vocot/temp/qwen_grounder_visualizations/all_qwen7b_full_v1/render_index.jsonl"
+}

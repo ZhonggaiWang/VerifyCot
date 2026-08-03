@@ -7,11 +7,7 @@ from grounding_control.contracts import (
     GroundingResult,
     VerificationRequest,
 )
-from grounding_control.four_way.contracts import (
-    ActionVerifierOutput,
-    BoxRefinerBackend,
-    RefinementResult,
-)
+from grounding_control.four_way.contracts import ActionVerifierOutput
 from grounding_control.contracts.errors import ExpertNotConfiguredError
 from grounding_control.four_way.expert_dispatch import (
     FourWayExpertDispatcher as ExpertRouter,
@@ -59,18 +55,6 @@ class _Grounder(GrounderBackend):
         return GroundingResult(
             bbox=(0.4, 0.4, 0.6, 0.6),
             source='fake_grounder',
-        )
-
-
-class _Refiner(BoxRefinerBackend):
-    def __init__(self):
-        self.modes = []
-
-    def refine(self, request):
-        self.modes.append(request.mode)
-        return RefinementResult(
-            bbox=(0.05, 0.1, 0.35, 0.5),
-            source='fake_refiner',
         )
 
 
@@ -129,10 +113,9 @@ class RoutingPolicyTests(unittest.TestCase):
             'abstain',
         )
 
-    def test_expert_router_dispatches_by_role(self):
+    def test_expert_router_dispatches_every_rejection_to_grounder(self):
         grounder = _Grounder()
-        refiner = _Refiner()
-        router = ExpertRouter(grounder=grounder, box_refiner=refiner)
+        router = ExpertRouter(grounder=grounder)
         request = _request()
 
         wrong = _action('relocate')
@@ -156,14 +139,14 @@ class RoutingPolicyTests(unittest.TestCase):
             request,
             partial,
         )
-        self.assertEqual(expanded.expert_role, 'box_refiner')
+        self.assertEqual(expanded.expert_role, 'grounder')
         self.assertEqual(expanded.action, 'expand')
-        self.assertEqual(refiner.modes, ['expand'])
+        self.assertEqual(grounder.calls, 3)
 
-    def test_missing_specialist_is_explicit(self):
+    def test_missing_grounder_is_explicit_for_every_rejection(self):
         output = _action('tighten')
         with self.assertRaises(ExpertNotConfiguredError):
-            ExpertRouter(grounder=_Grounder()).route(
+            ExpertRouter().route(
                 RoutingPolicy().decide(output),
                 _request(),
                 output,

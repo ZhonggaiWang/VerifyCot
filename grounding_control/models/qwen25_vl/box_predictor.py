@@ -1,6 +1,6 @@
 """Adapt Qwen2.5-VL coordinate generation to the box-predictor capability."""
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from ..box_predictor import BoxPrediction, BoxPredictionRequest
 from .grounding_parser import (
@@ -27,14 +27,17 @@ class Qwen25VLBoxPredictor:
             self,
             runner: Qwen25VLRunner,
             min_pixels: int = DEFAULT_MIN_PIXELS,
-            max_pixels: int = DEFAULT_MAX_PIXELS,
+            max_pixels: Optional[int] = DEFAULT_MAX_PIXELS,
             boundary_tolerance_pixels: float = (
                 DEFAULT_BOUNDARY_TOLERANCE_PIXELS
             ),
             prompt_protocol: str = DEFAULT_GROUNDING_PROMPT_PROTOCOL):
         self.runner = runner
         self.min_pixels = int(getattr(runner, 'min_pixels', min_pixels))
-        self.max_pixels = int(getattr(runner, 'max_pixels', max_pixels))
+        runner_max_pixels = getattr(runner, 'max_pixels', max_pixels)
+        self.max_pixels = (
+            None if runner_max_pixels is None else int(runner_max_pixels)
+        )
         self.boundary_tolerance_pixels = float(boundary_tolerance_pixels)
         self.prompt_protocol = prompt_protocol
 
@@ -65,6 +68,10 @@ class Qwen25VLBoxPredictor:
             'raw_response': raw_response,
             'original_image_size': list(prepared.original_size),
             'model_image_size': list(prepared.model_size),
+            'configured_max_pixels': self.max_pixels,
+            'effective_model_pixels': (
+                prepared.model_size[0] * prepared.model_size[1]
+            ),
             'coordinate_system': 'absolute_xyxy_on_original_image',
             'parse_failed': False,
         }

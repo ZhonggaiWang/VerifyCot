@@ -337,7 +337,6 @@ def main():
             'generator': args.model_path,
             'verifier': 'oracle_iou',
             'grounder': 'oracle',
-            'box_refiner': 'oracle',
         },
         'coordinate_system': ORACLE_BOX_COORDINATE_SYSTEM,
     })

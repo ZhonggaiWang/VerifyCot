@@ -239,7 +239,6 @@ def _fake_routed_result(**kwargs):
         'predicted_action': 'no_action',
         'router_action': 'verified_accept',
         'grounder_invoked': False,
-        'box_refiner_invoked': False,
         'missing_expert_error': None,
         'verifier_abstained': False,
         'verifier_metadata': {

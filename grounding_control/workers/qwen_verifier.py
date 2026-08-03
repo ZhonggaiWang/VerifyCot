@@ -39,7 +39,7 @@ class QwenVerifierWorkerEngine:
             dtype: str = 'bfloat16',
             max_new_tokens: int = 64,
             min_pixels: int = DEFAULT_MIN_PIXELS,
-            max_pixels: int = DEFAULT_MAX_PIXELS,
+            max_pixels: Optional[int] = DEFAULT_MAX_PIXELS,
             attn_implementation: str = 'sdpa',
             crop_min_side: int = 56,
             default_image_mode: str = 'bbox_image_only'):
@@ -110,7 +110,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--dtype', default='bfloat16')
     parser.add_argument('--max-new-tokens', type=int, default=64)
     parser.add_argument('--min-pixels', type=int, default=DEFAULT_MIN_PIXELS)
-    parser.add_argument('--max-pixels', type=int, default=DEFAULT_MAX_PIXELS)
+    parser.add_argument(
+        '--max-pixels', type=int, default=DEFAULT_MAX_PIXELS,
+        help='Optional explicit cap; omitted by default to preserve source resolution.',
+    )
     parser.add_argument('--attn-implementation', default='sdpa')
     parser.add_argument('--crop-min-side', type=int, default=56)
     parser.add_argument('--default-image-mode', default='bbox_image_only')

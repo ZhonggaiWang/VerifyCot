@@ -4,7 +4,6 @@ import argparse
 from typing import Any, Dict, Mapping, Optional
 
 from grounding_control.models.qwen25_vl import (
-    DEFAULT_MAX_PIXELS,
     DEFAULT_MIN_PIXELS,
     LocalQwen25VLRunner,
     Qwen25VLBoxPredictor,
@@ -29,6 +28,10 @@ from grounding_control.workers.endpoints import QwenGrounderEndpoint
 
 PROTOCOL_NAME = DEFAULT_PROTOCOL_NAME
 RESPONSE_PREFIX = DEFAULT_RESPONSE_PREFIX
+# Single-card Qwen7B Grounder budget.  This is deliberately much larger than
+# the retired 401,408-pixel cap while bounding visual-encoder memory for
+# arbitrarily large source images on a 24 GiB GPU.
+DEFAULT_GROUNDER_MAX_PIXELS = 12_000_000
 
 
 class QwenGrounderWorkerEngine:
@@ -42,7 +45,7 @@ class QwenGrounderWorkerEngine:
             dtype: str = 'bfloat16',
             max_new_tokens: int = 64,
             min_pixels: int = DEFAULT_MIN_PIXELS,
-            max_pixels: int = DEFAULT_MAX_PIXELS,
+            max_pixels: Optional[int] = DEFAULT_GROUNDER_MAX_PIXELS,
             attn_implementation: str = 'sdpa',
             prompt_protocol: str = DEFAULT_GROUNDING_PROMPT_PROTOCOL,
             boundary_tolerance_pixels: float = (
@@ -57,7 +60,7 @@ class QwenGrounderWorkerEngine:
         self.dtype = str(dtype)
         self.max_new_tokens = int(max_new_tokens)
         self.min_pixels = int(min_pixels)
-        self.max_pixels = int(max_pixels)
+        self.max_pixels = None if max_pixels is None else int(max_pixels)
         self.attn_implementation = str(attn_implementation)
         self.prompt_protocol = str(prompt_protocol)
         self.boundary_tolerance_pixels = float(boundary_tolerance_pixels)
@@ -132,7 +135,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--dtype', default='bfloat16')
     parser.add_argument('--max-new-tokens', type=int, default=64)
     parser.add_argument('--min-pixels', type=int, default=DEFAULT_MIN_PIXELS)
-    parser.add_argument('--max-pixels', type=int, default=DEFAULT_MAX_PIXELS)
+    parser.add_argument(
+        '--max-pixels', type=int, default=DEFAULT_GROUNDER_MAX_PIXELS,
+        help=(
+            'Grounder image-pixel budget; defaults to 12MP for reliable '
+            'single-card Qwen7B inference.'
+        ),
+    )
     parser.add_argument('--attn-implementation', default='sdpa')
     parser.add_argument(
         '--prompt-protocol',
@@ -168,6 +177,7 @@ def main() -> int:
 
 
 __all__ = [
+    'DEFAULT_GROUNDER_MAX_PIXELS',
     'PROTOCOL_NAME',
     'QwenGrounderWorkerEngine',
     'RESPONSE_PREFIX',

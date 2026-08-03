@@ -107,7 +107,7 @@ class Qwen25VLAlignmentVerifierBackend(AlignmentVerifierBackend):
             dtype: str = 'bfloat16',
             max_new_tokens: int = 64,
             min_pixels: int = DEFAULT_MIN_PIXELS,
-            max_pixels: int = DEFAULT_MAX_PIXELS,
+            max_pixels: Optional[int] = DEFAULT_MAX_PIXELS,
             crop_min_side: int = DEFAULT_QWEN_CROP_MIN_SIDE,
             parse_fail_open: bool = True):
         if image_mode not in BINARY_IMAGE_MODES:

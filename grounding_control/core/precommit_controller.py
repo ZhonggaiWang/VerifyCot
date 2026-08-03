@@ -297,7 +297,6 @@ class PrecommitGroundingController(CoordinateRolloutBase):
                 'missing_expert_error': missing_expert_error,
                 'missing_expert_metadata': missing_expert_metadata,
                 'grounder_invoked': grounder_invoked,
-                'box_refiner_invoked': False,
                 'grounder_source': (
                     None if grounder_result is None else grounder_result.source
                 ),

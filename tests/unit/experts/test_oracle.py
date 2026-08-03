@@ -6,15 +6,9 @@ from types import SimpleNamespace
 from constants import DEFAULT_BOC_TOKEN, DEFAULT_EOC_TOKEN
 from utils.coordinate_intervention import OnlineOracleCoordinateLogitsProcessor
 from grounding_control.experts.grounders import OracleGrounderBackend
-from grounding_control.four_way.experts.refiners import (
-    OracleBoxRefinerBackend,
-)
 from grounding_control.oracle_targets import OracleTargetResolver
 from grounding_control.four_way.verifiers import OracleIoUVerifierBackend
-from grounding_control.four_way.contracts import (
-    ActionVerifierOutput,
-    RefinementRequest,
-)
+from grounding_control.four_way.contracts import ActionVerifierOutput
 from grounding_control.contracts import (
     VerificationRequest,
 )
@@ -180,20 +174,6 @@ class OracleExpertTests(unittest.TestCase):
         with self.assertRaises(ExpertUnavailableError):
             OracleGrounderBackend(self.grounder_resolver).ground(
                 request.grounding_request()
-            )
-
-    def test_refiner_returns_gt_for_both_geometry_actions(self):
-        backend = OracleBoxRefinerBackend(self.resolver)
-        for mode in ('expand', 'tighten'):
-            result = backend.refine(RefinementRequest(
-                verification_request=_request(),
-                verification=_verification(mode),
-                mode=mode,
-            ))
-            self.assertEqual(result.bbox, (0.1, 0.2, 0.3, 0.4))
-            self.assertEqual(
-                result.metadata['oracle_refinement_mode'],
-                mode,
             )
 
     def test_unmatched_reference_is_explicitly_unavailable(self):

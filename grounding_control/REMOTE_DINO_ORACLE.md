@@ -15,9 +15,13 @@ the candidate and DINO box to:
 ```text
 no_action -> keep the model box
 relocate  -> OracleGrounderBackend
-expand    -> OracleBoxRefinerBackend
-tighten   -> OracleBoxRefinerBackend
+expand    -> OracleGrounderBackend
+tighten   -> OracleGrounderBackend
 ```
+
+The four-way labels are retained only for archived diagnostics. Every
+non-accept label now has the same operational meaning: reject the candidate
+and ask the Grounder to localize the referenced object independently.
 
 The oracle experts use the latest-unique-longest explicit alias policy. If the
 current reference cannot be matched uniquely to an annotated object, the

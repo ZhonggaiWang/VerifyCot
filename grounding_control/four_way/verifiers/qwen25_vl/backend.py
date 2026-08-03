@@ -54,7 +54,7 @@ class Qwen25VLVerifierBackend(ActionVerifierBackend):
             dtype: str = 'bfloat16',
             max_new_tokens: int = 64,
             min_pixels: int = DEFAULT_MIN_PIXELS,
-            max_pixels: int = DEFAULT_MAX_PIXELS,
+            max_pixels: Optional[int] = DEFAULT_MAX_PIXELS,
             crop_min_side: int = DEFAULT_QWEN_CROP_MIN_SIDE,
             parse_fail_open: bool = True):
         if runner is None:

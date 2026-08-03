@@ -70,7 +70,7 @@ class QwenFourWayVerifierDinoGrounderWorkerEngine:
             dino_dtype: str = 'float32',
             qwen_max_new_tokens: int = 64,
             qwen_min_pixels: int = DEFAULT_MIN_PIXELS,
-            qwen_max_pixels: int = DEFAULT_MAX_PIXELS,
+            qwen_max_pixels: Optional[int] = DEFAULT_MAX_PIXELS,
             qwen_attn_implementation: str = 'sdpa',
             crop_min_side: int = 56,
             default_verifier_mode: str = 'routing_four_way',
@@ -176,17 +176,12 @@ class QwenFourWayVerifierDinoGrounderWorkerEngine:
                 top_k_log=dino_top_k_log,
             ))
         )
-        # The operation is reserved in the protocol, but no implementation is
-        # silently substituted for an explicit expand/tighten expert.
-        self.refiner_endpoint = None
-
     def _ping(self) -> Dict[str, Any]:
         return {
             'protocol': PROTOCOL_NAME,
             'worker': 'qwen_dino',
             'qwen_configured': self.verifier_endpoint is not None,
             'dino_configured': self.grounder_endpoint is not None,
-            'box_refiner_configured': self.refiner_endpoint is not None,
             'qwen_model_path': self.qwen_model_path,
             'dino_model_path': self.dino_model_path,
             'default_verifier_mode': self.default_verifier_mode,
@@ -217,10 +212,6 @@ class QwenFourWayVerifierDinoGrounderWorkerEngine:
                     'Grounding DINO is not configured for this worker'
                 )
             return self.grounder_endpoint.handle(payload)
-        if operation == 'refine':
-            if self.refiner_endpoint is None:
-                raise WorkerRequestError('box_refiner_not_configured')
-            return self.refiner_endpoint.handle(payload)
         if operation == 'shutdown':
             return {'shutdown': True}
         raise WorkerRequestError(f'unsupported operation: {operation!r}')
@@ -238,7 +229,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--dino-dtype', default='float32')
     parser.add_argument('--qwen-max-new-tokens', type=int, default=64)
     parser.add_argument('--qwen-min-pixels', type=int, default=DEFAULT_MIN_PIXELS)
-    parser.add_argument('--qwen-max-pixels', type=int, default=DEFAULT_MAX_PIXELS)
+    parser.add_argument(
+        '--qwen-max-pixels', type=int, default=DEFAULT_MAX_PIXELS,
+        help='Optional explicit cap; omitted by default to preserve source resolution.',
+    )
     parser.add_argument('--qwen-attn-implementation', default='sdpa')
     parser.add_argument('--crop-min-side', type=int, default=56)
     parser.add_argument(

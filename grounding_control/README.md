@@ -19,7 +19,7 @@ The current implementation is split by responsibility:
   oracle used for upper bounds.
 - `experts/grounders/`: routed correction experts; the oracle implementation
   returns a conservatively matched GT box.
-- `four_way/`: archived action verifier, router, BoxRefiner, and worker stack.
+- `four_way/`: archived action verifier, Grounder-only router, and worker stack.
 - `oracle_targets.py`: shared reference-to-GT matcher for oracle components.
 - `transport/`: model-agnostic persistent JSONL protocol and clients.
 - `workers/`: binary verifier and standalone `dino_grounder` / `qwen_grounder`
@@ -31,13 +31,26 @@ The current implementation is split by responsibility:
   only by those archived repair experiments.
 
 The controller always stops before a candidate coordinate enters
-REFbind. It then commits either the accepted candidate or the grounding
-backend/box refiner's replacement; the committed coordinate always follows
+REFbind. It then commits either the accepted candidate or the Grounder's
+replacement; the committed coordinate always follows
 Volcano's normal REFbind path. There is no active sandbox REFbind mode.
 
 The primary routing interface is binary alignment scoring with explicit
 accept, reject, and uncertain bands. The retained four-way interface is an
 explicit diagnostic/appendix path under `grounding_control.four_way`.
+
+Grounder backends can be compared independently of routing with
+`eval/grounding_control/vstar/evaluate_grounder_accuracy.py`.  Its production
+Qwen2.5-VL-7B launcher is
+`scripts/run_vstar_qwen_grounder_accuracy.sh`; the benchmark sends only a
+clean image and canonical object reference and scores original-image boxes.
+
+The complementary end-to-end VStar routing evaluator is
+`eval/grounding_control/vstar/evaluate_oracle_verifier_qwen_grounder.py`.
+It verifies every natural coordinate with a binary GT-IoU oracle and calls the
+real Qwen2.5-VL-7B Grounder only for rejected coordinates.  Use
+`scripts/run_vstar_oracle_verifier_qwen_grounder.sh`; detailed semantics and
+output fields are documented in `eval/grounding_control/README.md`.
 
 ## Qwen2.5-VL verifier backend
 
@@ -92,12 +105,12 @@ normalized center-padded-square coordinate system. Existing benchmark renders
 are intentionally ignored by this production-faithful path; the Qwen backend
 re-renders its own red candidate rectangle.
 
-The local runner caps each input image at `512 * 28 * 28 = 401408` pixels by
-default, or about 512 merged Qwen visual tokens per image. This bounds the
-two-image verifier's activation peak. Override it with `--max-pixels` when a
-different accuracy/memory tradeoff is needed. The cap cannot compensate for a
-GPU already occupied by another process; benchmark runs should use an
-otherwise free device.
+The local runner imposes no project-level pixel cap by default. For each
+request it raises Qwen's processor limit to the factor-rounded source-image
+area, so the available source resolution is retained. `--max-pixels` remains
+available only for an explicit resolution ablation. A pixel limit cannot
+compensate for a GPU already occupied by another process; benchmark runs
+should use an otherwise free device.
 
 Qwen rejects images whose width or height does not exceed its 28px merged
 patch factor. Candidate crops with a short side below 56px are therefore

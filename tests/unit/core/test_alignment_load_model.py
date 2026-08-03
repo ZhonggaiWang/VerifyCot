@@ -31,7 +31,6 @@ class AlignmentRoutingInferTests(unittest.TestCase):
         self.assertEqual(policy.reject_threshold, 0.2)
         self.assertEqual(policy.accept_threshold, 0.8)
         self.assertEqual(kwargs['missing_expert_policy'], 'fail_open')
-        self.assertNotIn('box_refiner_backend', kwargs)
 
     def test_wrapper_rejects_invalid_threshold_order_before_generation(self):
         with patch.object(load_model_module, 'routing_infer') as routed:

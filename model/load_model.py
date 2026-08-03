@@ -691,7 +691,7 @@ def routing_infer(
         query=None, cot=True, sample_id=None, max_new_tokens=1024,
         temperature=0.0, conversation=None, options=None, log_path=None,
         verifier_confidence_threshold=0.8, sample_context=None,
-        box_refiner_backend=None, routing_policy=None,
+        routing_policy=None,
         alignment_routing_policy=None,
         missing_expert_policy='fail_open'):
     """Run verifier--expert routing and validate every committed box.
@@ -701,8 +701,7 @@ def routing_infer(
     mechanics: fresh batch construction, coordinate routing, and the strict
     equality check among coordinate text, the controller's committed box, and
     Volcano's recorded REFbind box. ``grounder_backend`` may be ``None`` for
-    verifier-only or refiner-only runs; missing routed experts follow
-    ``missing_expert_policy``.
+    verifier-only runs; missing routed experts follow ``missing_expert_policy``.
     """
     if sample_id is None:
         raise ValueError('sample_id is required for routing_infer')
@@ -723,10 +722,10 @@ def routing_infer(
         'normalized_xyxy_on_center_padded_square',
     )
     if alignment_routing_policy is not None:
-        if routing_policy is not None or box_refiner_backend is not None:
+        if routing_policy is not None:
             raise ValueError(
                 'binary alignment routing does not accept four-way routing '
-                'policy or BoxRefiner backends'
+                'policy'
             )
         controller = PrecommitGroundingController(
             model=model,
@@ -753,7 +752,6 @@ def routing_infer(
             batch_factory=batch_factory,
             verifier=verifier_backend,
             grounder=grounder_backend,
-            box_refiner=box_refiner_backend,
             routing_policy=routing_policy,
             missing_expert_policy=missing_expert_policy,
             sample_id=str(sample_id),

@@ -6,7 +6,7 @@ grounding-geometry verifier depends on no archived classifier implementation.
 
 import math
 from dataclasses import dataclass
-from typing import Sequence, Tuple
+from typing import Optional, Sequence, Tuple
 
 from PIL import Image, ImageDraw
 
@@ -61,7 +61,7 @@ def prepare_grounding_action_image(
         image: Image.Image,
         candidate_bbox_pixel_xyxy: Sequence[float],
         min_pixels: int,
-        max_pixels: int,
+        max_pixels: Optional[int],
         box_color: Tuple[int, int, int] = (255, 0, 0),
         line_width: int = 4,
 ) -> PreparedGroundingActionImage:

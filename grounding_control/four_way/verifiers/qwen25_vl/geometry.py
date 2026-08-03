@@ -42,7 +42,7 @@ class Qwen25VLGroundingGeometryClassifier:
             device: str = 'cuda:0',
             dtype: str = 'bfloat16',
             min_pixels: int = DEFAULT_MIN_PIXELS,
-            max_pixels: int = DEFAULT_MAX_PIXELS,
+            max_pixels: Optional[int] = DEFAULT_MAX_PIXELS,
             attn_implementation: str = 'sdpa',
             accept_iou_threshold: float = 0.5,
             containment_threshold: float = 0.7,
@@ -79,7 +79,10 @@ class Qwen25VLGroundingGeometryClassifier:
             )
         self.runner = runner
         self.min_pixels = int(getattr(runner, 'min_pixels', min_pixels))
-        self.max_pixels = int(getattr(runner, 'max_pixels', max_pixels))
+        runner_max_pixels = getattr(runner, 'max_pixels', max_pixels)
+        self.max_pixels = (
+            None if runner_max_pixels is None else int(runner_max_pixels)
+        )
         self.accept_iou_threshold = float(accept_iou_threshold)
         self.containment_threshold = float(containment_threshold)
         self.boundary_tolerance_pixels = boundary_tolerance

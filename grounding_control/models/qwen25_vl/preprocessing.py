@@ -2,7 +2,7 @@
 
 import math
 from dataclasses import dataclass
-from typing import Sequence, Tuple
+from typing import Optional, Sequence, Tuple
 
 from PIL import Image
 
@@ -22,7 +22,7 @@ class PreparedReferenceImage:
 def qwen_smart_resize_size(
         image_size: Sequence[int],
         min_pixels: int,
-        max_pixels: int,
+        max_pixels: Optional[int],
         factor: int = QWEN_IMAGE_FACTOR,
 ) -> Tuple[int, int]:
     """Reproduce Qwen2.5-VL smart-resize dimensions as ``(width, height)``."""
@@ -32,7 +32,10 @@ def qwen_smart_resize_size(
     width, height = (int(value) for value in image_size)
     if width <= 0 or height <= 0:
         raise ValueError('image width and height must be positive')
-    if min_pixels <= 0 or max_pixels <= 0 or min_pixels > max_pixels:
+    if min_pixels <= 0:
+        raise ValueError('invalid Qwen min/max pixel bounds')
+    if max_pixels is not None and (
+            max_pixels <= 0 or min_pixels > max_pixels):
         raise ValueError('invalid Qwen min/max pixel bounds')
     if factor <= 0:
         raise ValueError('resize factor must be positive')
@@ -42,7 +45,7 @@ def qwen_smart_resize_size(
         )
     resized_width = max(factor, round(width / factor) * factor)
     resized_height = max(factor, round(height / factor) * factor)
-    if resized_width * resized_height > max_pixels:
+    if max_pixels is not None and resized_width * resized_height > max_pixels:
         beta = math.sqrt((width * height) / max_pixels)
         resized_width = math.floor((width / beta) / factor) * factor
         resized_height = math.floor((height / beta) / factor) * factor
@@ -58,7 +61,7 @@ def qwen_smart_resize_size(
 def prepare_reference_image(
         image: Image.Image,
         min_pixels: int,
-        max_pixels: int,
+        max_pixels: Optional[int],
 ) -> PreparedReferenceImage:
     if not isinstance(image, Image.Image):
         raise TypeError('image must be a PIL.Image.Image')

@@ -1,9 +1,8 @@
 """Internal object-to-box model capability.
 
 This is deliberately not a controller role named ``Localizer``.  A single
-model capability can be adapted into a localization-based verifier, a
-GrounderBackend, or (later) a BoxRefinerBackend without conflating those
-system-level responsibilities.
+model capability can be adapted into a localization-based verifier or a
+GrounderBackend without conflating those system-level responsibilities.
 """
 
 from dataclasses import dataclass, field

@@ -7,7 +7,7 @@ tests/
 ├── unit/
 │   ├── core/          # contracts、坐标、路由策略和 controller primitives
 │   ├── backends/      # verifier backend
-│   ├── experts/       # Grounder、BoxRefiner 和 oracle
+│   ├── experts/       # Grounder 和 oracle
 │   ├── workers/       # worker engine、endpoint 与 JSONL transport
 │   └── benchmarks/    # benchmark adapter、生成规则和阈值搜索
 ├── integration/

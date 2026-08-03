@@ -8,22 +8,11 @@ from .action_verifier import (
     ActionVerifierOutput,
     VerifierAction,
 )
-from .box_refiner import (
-    BoxRefinerBackend,
-    RefinementMode,
-    RefinementRequest,
-    RefinementResult,
-)
-
 __all__ = [
     'ACTION_NAMES',
     'ACTION_OUTPUT_SCHEMA',
     'ActionVerifierBackend',
     'ActionVerifierOutput',
-    'BoxRefinerBackend',
-    'RefinementMode',
-    'RefinementRequest',
-    'RefinementResult',
     'VerificationRequest',
     'VerifierAction',
 ]
